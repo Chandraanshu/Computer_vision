@@ -65,7 +65,7 @@ def pixelDiffImages(img1, img2, x, y, width, height):
     return np.array([[math.sqrt(np.linalg.norm(x)) for x in row] for row in diff])
 
 
-def LKTracker(frame1, frame2, pixelCoords, windowSize):
+def LKTrackerFrameToFrame(frame1, frame2, pixelCoords, windowSize):
     """Tracks a pixel from one frame to another using the Lucas-Kanade Method.
 
     In fact, tracks a square window centred at the pixel.
@@ -130,15 +130,49 @@ def LKTracker(frame1, frame2, pixelCoords, windowSize):
     return pixelCoords + d
 
 
+def LKTracker(cap, pixelCoords, windowSize):
+    """Tracks a pixel from frame to frame using the Lucas-Kanade Method.
+
+    In fact, tracks a square window centred at the pixel.
+    The smaller the difference from frame to frame, the better the tracking.
+    Returns a generator object that can be iterated over to give successive
+    positions of the pixel.
+
+    Args:
+        cap: cv2.VideoCapture object representing the video in which to track
+            the pixel.
+        pixelCoords: Numpy array with shape (2, ) giving coordinates of pixel.
+        windowSize: The side length of the square window being tracked.
+
+    Yields:
+        The current frame, and the coordinates of the pixel in that frame. The
+        first value yielded is the original position.
+    """
+    # Get first frame.
+    _, frameNew = cap.read()
+    yield frameNew, pixelCoords
+
+    while cap.isOpened():
+        frameOld = frameNew
+        ret, frameNew = cap.read()
+        if ret:
+            pixelCoords = np.round(LKTrackerFrameToFrame(frameOld,
+                                            frameNew,
+                                            pixelCoords,
+                                            windowSize)).astype(int)
+            yield frameNew, pixelCoords
+
+def drawRectangleOnImage(image, centre, width, height, color):
+    cv2.rectangle(image, (centre[0] - width // 2, centre[1] - height // 2), (centre[0] + width // 2, centre[1] + height // 2), color=color)
+
+
 if __name__ == '__main__':
     cap = openVideo('traffic.mp4')
 
-    _, frame1 = cap.read()
-    _, frame2 = cap.read()
-
     # Set up to track top of yellow taxi in traffic.mp4.
-    print(LKTracker(frame1, frame2, np.array([207, 170]), WINDOW_SIZE))
-
-    # cv2.rectangle(frame, (200, 165), (215, 175), color=(0, 0, 255))
+    for frame, coords in LKTracker(cap, np.array([207, 170]), WINDOW_SIZE):
+        drawRectangleOnImage(frame, coords, WINDOW_SIZE, WINDOW_SIZE, (0, 0, 255))
+        cv2.imshow('Frame', frame)
+        cv2.waitKey(200)
 
     shutdown(cap)
