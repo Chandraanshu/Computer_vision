@@ -71,9 +71,6 @@ gkern = np.outer(signal.gaussian(WINDOW_WIDTH, 2.5), signal.gaussian(WINDOW_HEIG
 Z = np.array([[np.sum(Ixx * gkern), np.sum(Ixy * gkern)], [np.sum(Ixy * gkern), np.sum(Iyy * gkern)]])
 b = np.array([np.sum(diff * gx * gkern), np.sum(diff * gy * gkern)])
 d = np.linalg.solve(Z, b)
-print(Z)
-print(b)
-print(d)
 
 # cv2.imshow('Image', frame1)
 # cv2.waitKey(2000)
