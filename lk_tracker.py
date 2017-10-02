@@ -34,7 +34,7 @@ _, frame2 = cap.read()
 labframe1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2Lab)
 labframe2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2Lab)
 
-def colorDiffImages(mat1, mat2, x, y, width, height):
+def pixelDiffImages(mat1, mat2, x, y, width, height):
     """Computes the pixel-wise difference between Lab* images.
 
     Requires images to be using the Lab* colour encoding scheme.
@@ -58,9 +58,9 @@ def colorDiffImages(mat1, mat2, x, y, width, height):
     diff = mat1[x : x + width, y : y + height] - mat2[x : x + width, y : y + height]
     return np.array([[math.sqrt(np.linalg.norm(x)) for x in row] for row in diff])
 
-gx = colorDiffImages(labframe1[:, 1 : ], labframe1[:, : -1], WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
-gy = colorDiffImages(labframe1[1 :, :], labframe1[ : -1, :], WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
-diff = colorDiffImages(labframe1, labframe2, WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
+gx = pixelDiffImages(labframe1[:, 1 : ], labframe1[:, : -1], WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
+gy = pixelDiffImages(labframe1[1 :, :], labframe1[ : -1, :], WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
+diff = pixelDiffImages(labframe1, labframe2, WINDOW_X, WINDOW_Y, WINDOW_WIDTH, WINDOW_HEIGHT)
 
 Ixx = gx ** 2
 Iyy = gy ** 2
