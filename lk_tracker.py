@@ -6,6 +6,19 @@ import math
 
 WINDOW_SIZE = 13  # Must be an odd number
 
+def imageShrink(image, size):
+    """
+    Reduces by half, uses gausian filter
+    """
+    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
+    total = gkern.sum()
+    gkern = gkern/total     #Sum of Gauss kernel must be one.... Doesn't work without it
+    b = signal.convolve2d(image[:,:,0], gkern, 'same')
+    g = signal.convolve2d(image[:,:,1], gkern, 'same')
+    r = signal.convolve2d(image[:,:,2], gkern, 'same')
+    shrunk = np.dstack([b,g,r])
+    shrunk = (shrunk).astype(np.uint8)
+    return shrunk[::2,::2]
 
 def openVideo(fileName):
     """Opens video stored at the given file.
@@ -165,14 +178,30 @@ def LKTracker(cap, pixelCoords, windowSize):
 def drawRectangleOnImage(image, centre, width, height, color):
     cv2.rectangle(image, (centre[0] - width // 2, centre[1] - height // 2), (centre[0] + width // 2, centre[1] + height // 2), color=color)
 
+def generateShrinkPyramid(frame, depth):
+    shrunkImages = []
+    window = 7          #NEED TO FINETUNE GAUSS KERNEL SIZE
+    for i in range(depth):
+        if i == 0:
+            shrunkImages.append(imageShrink(frameNew, window))
+            continue
+        shrunkImages.append(imageShrink(shrunkImages[i-1], window))
+        newWindow = math.ceil(window/2)
+        if newWindow % 2 == 0 : newWindow = newWindow + 1
+        window = newWindow
+    return shrunkImages
 
 if __name__ == '__main__':
     cap = openVideo('traffic.mp4')
 
     # Set up to track top of yellow taxi in traffic.mp4.
-    for frame, coords in LKTracker(cap, np.array([207, 170]), WINDOW_SIZE):
-        drawRectangleOnImage(frame, coords, WINDOW_SIZE, WINDOW_SIZE, (0, 0, 255))
-        cv2.imshow('Frame', frame)
-        cv2.waitKey(200)
+    #for frame, coords in LKTracker(cap, np.array([207, 170]), WINDOW_SIZE):
+    #    drawRectangleOnImage(frame, coords, WINDOW_SIZE, WINDOW_SIZE, (0, 0, 255))
+    #    cv2.imshow('Frame', frame)
+    #    cv2.waitKey(200)
 
+    _, frameNew = cap.read()
+    shrunkImages = generateShrinkPyramid(frameNew, 3)
+    cv2.imshow('Frame',shrunkImages[0])
+    cv2.waitKey(5000)
     shutdown(cap)
