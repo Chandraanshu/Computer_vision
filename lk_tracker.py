@@ -9,6 +9,8 @@ WINDOW_SIZE = 13  # Must be an odd number
 def imageShrink(image, size):
     """
     Reduces by half, uses gausian filter
+    size :
+        size of Gauss kernel to use
     """
     gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
     total = gkern.sum()
@@ -179,6 +181,11 @@ def drawRectangleOnImage(image, centre, width, height, color):
     cv2.rectangle(image, (centre[0] - width // 2, centre[1] - height // 2), (centre[0] + width // 2, centre[1] + height // 2), color=color)
 
 def generateShrinkPyramid(frame, depth):
+    '''
+    Generates images half in size, returns as list
+    depth :
+        how many levels deep to go
+    '''
     shrunkImages = []
     window = 7          #NEED TO FINETUNE GAUSS KERNEL SIZE
     for i in range(depth):
@@ -186,7 +193,7 @@ def generateShrinkPyramid(frame, depth):
             shrunkImages.append(imageShrink(frameNew, window))
             continue
         shrunkImages.append(imageShrink(shrunkImages[i-1], window))
-        newWindow = math.ceil(window/2)
+        newWindow = math.ceil(window/2)      #Gauss window size needs to reduce as the image gets smaller, else the blurring is excessive
         if newWindow % 2 == 0 : newWindow = newWindow + 1
         window = newWindow
     return shrunkImages
