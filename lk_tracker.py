@@ -114,6 +114,7 @@ def LKTrackerFrameToFrame(frame1, frame2, pixelCoords, windowSize):
     frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2Lab)
 
     # Get top left corner of window.
+    print(pixelCoords)
     topLeftX, topLeftY = pixelCoords - windowSize // 2
 
     # Compute horizontal and vertical gradients for the original frame.
@@ -203,7 +204,7 @@ def generateShrinkPyramid(frame, depth):
     window = 7          #NEED TO FINETUNE GAUSS KERNEL SIZE
     for i in range(depth):
         if i == 0:
-            shrunkImages.append(imageShrink(frameNew, window))
+            shrunkImages.append(imageShrink(frame, window))
             continue
         shrunkImages.append(imageShrink(shrunkImages[i-1], window))
         newWindow = math.ceil(window/2)      #Gauss window size needs to reduce as the image gets smaller, else the blurring is excessive
@@ -211,18 +212,42 @@ def generateShrinkPyramid(frame, depth):
         window = newWindow
     return shrunkImages
 
+def test(cap, pixelCoords, windowSize):
+    _, frameNew = cap.read()
+    print(pixelCoords)
+    tempCoords = pixelCoords         #3 levels(207 and 170 div by 8)
+    yield frameNew, pixelCoords
+
+    while cap.isOpened():
+        frameOld = frameNew
+        ret, frameNew = cap.read()
+        tempCoords = np.array(np.floor_divide(tempCoords, 8))
+        shrunkImagesOld = generateShrinkPyramid(frameOld, 3)
+        shrunkImagesNew = generateShrinkPyramid(frameNew, 3)
+        if ret:
+            print('ONCE')
+            for i in reversed(range(3)):
+                print(tempCoords)
+                tempCoords = np.round(LKTrackerFrameToFrame(shrunkImagesOld[i],
+                                                shrunkImagesNew[i],
+                                                tempCoords,
+                                                windowSize)).astype(int)
+                tempCoords = np.array(np.multiply(tempCoords,2))
+        yield frameNew, tempCoords
+
 if __name__ == '__main__':
     cap = openVideo('traffic.mp4')
 
     # Set up to track top of yellow taxi in traffic.mp4.
     #for frame, coords in LKTracker(cap, np.array([207, 170]), WINDOW_SIZE):
-    #    drawRectangleOnImage(frame, coords, WINDOW_SIZE, WINDOW_SIZE, (0, 0, 255))
-    #    cv2.imshow('Frame', frame)
-    #    cv2.waitKey(200)
+    for frame, coords in test(cap, np.array([207, 170]), WINDOW_SIZE):
+        drawRectangleOnImage(frame, coords, WINDOW_SIZE, WINDOW_SIZE, (0, 0, 255))
+        cv2.imshow('Frame', frame)
+        cv2.waitKey(50)
 
-    _, frameNew = cap.read()
-    shrunkImages = generateShrinkPyramid(frameNew, 3)
-    a = imageExpand(shrunkImages[0], 7)
-    cv2.imshow('Frame',a)
-    cv2.waitKey(5000)
+    #_, frameNew = cap.read()
+    #shrunkImages = generateShrinkPyramid(frameNew, 3)
+    #a = imageExpand(shrunkImages[0], 7)
+    #cv2.imshow('Frame',a)
+    #cv2.waitKey(5000)
     shutdown(cap)
