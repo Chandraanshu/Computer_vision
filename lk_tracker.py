@@ -22,6 +22,19 @@ def imageShrink(image, size):
     shrunk = (shrunk).astype(np.uint8)
     return shrunk[::2,::2]
 
+def imageExpand(image, size):
+    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
+    total = gkern.sum()
+    gkern = gkern/total
+    expand = np.zeros((image.shape[0]*2, image.shape[1]*2, 3), dtype=np.float64)
+    expand[::2,::2] = image[:,:,:]
+    b = signal.convolve2d(expand[:,:,0], gkern, 'same')
+    g = signal.convolve2d(expand[:,:,1], gkern, 'same')
+    r = signal.convolve2d(expand[:,:,2], gkern, 'same')
+    expand = np.dstack([b,g,r])
+    expand = expand.astype(np.uint8)
+    return expand
+
 def openVideo(fileName):
     """Opens video stored at the given file.
 
@@ -209,6 +222,7 @@ if __name__ == '__main__':
 
     _, frameNew = cap.read()
     shrunkImages = generateShrinkPyramid(frameNew, 3)
-    cv2.imshow('Frame',shrunkImages[0])
+    a = imageExpand(shrunkImages[0], 7)
+    cv2.imshow('Frame',a)
     cv2.waitKey(5000)
     shutdown(cap)
