@@ -15,9 +15,9 @@ def imageShrink(image, size):
     gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
     total = gkern.sum()
     gkern = gkern/total     #Sum of Gauss kernel must be one.... Doesn't work without it
-    b = signal.convolve2d(image[:,:,0], gkern, 'same')
-    g = signal.convolve2d(image[:,:,1], gkern, 'same')
-    r = signal.convolve2d(image[:,:,2], gkern, 'same')
+    b = signal.fftconvolve(image[:,:,0], gkern, 'same')
+    g = signal.fftconvolve(image[:,:,1], gkern, 'same')
+    r = signal.fftconvolve(image[:,:,2], gkern, 'same')
     shrunk = np.dstack([b,g,r])
     shrunk = (shrunk).astype(np.uint8)
     return shrunk[::2,::2]
@@ -28,9 +28,9 @@ def imageExpand(image, size):
     gkern = gkern/total
     expand = np.zeros((image.shape[0]*2, image.shape[1]*2, 3), dtype=np.float64)
     expand[::2,::2] = image[:,:,:]
-    b = signal.convolve2d(expand[:,:,0], gkern, 'same')
-    g = signal.convolve2d(expand[:,:,1], gkern, 'same')
-    r = signal.convolve2d(expand[:,:,2], gkern, 'same')
+    b = signal.fftconvolve(expand[:,:,0], gkern, 'same')
+    g = signal.fftconvolve(expand[:,:,1], gkern, 'same')
+    r = signal.fftconvolve(expand[:,:,2], gkern, 'same')
     expand = np.dstack([b,g,r])
     expand = expand.astype(np.uint8)
     return expand
@@ -114,7 +114,7 @@ def LKTrackerFrameToFrame(frame1, frame2, pixelCoords, windowSize):
     frame2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2Lab)
 
     # Get top left corner of window.
-    print(pixelCoords)
+    #print(pixelCoords)
     topLeftX, topLeftY = pixelCoords - windowSize // 2
 
     # Compute horizontal and vertical gradients for the original frame.
@@ -156,6 +156,7 @@ def LKTrackerFrameToFrame(frame1, frame2, pixelCoords, windowSize):
     d = np.linalg.solve(Z, b)
 
     # Compute new position of pixel
+    print(pixelCoords + d)
     return pixelCoords + d
 
 
@@ -201,7 +202,7 @@ def generateShrinkPyramid(frame, depth):
         how many levels deep to go
     '''
     shrunkImages = []
-    window = 7          #NEED TO FINETUNE GAUSS KERNEL SIZE
+    window = 11         #NEED TO FINETUNE GAUSS KERNEL SIZE
     for i in range(depth):
         if i == 0:
             shrunkImages.append(imageShrink(frame, window))
@@ -214,8 +215,8 @@ def generateShrinkPyramid(frame, depth):
 
 def test(cap, pixelCoords, windowSize):
     _, frameNew = cap.read()
-    print(pixelCoords)
-    tempCoords = pixelCoords         #3 levels(207 and 170 div by 8)
+    #print(pixelCoords)
+    tempCoords = pixelCoords
     yield frameNew, pixelCoords
 
     while cap.isOpened():
@@ -225,9 +226,9 @@ def test(cap, pixelCoords, windowSize):
         shrunkImagesOld = generateShrinkPyramid(frameOld, 3)
         shrunkImagesNew = generateShrinkPyramid(frameNew, 3)
         if ret:
-            print('ONCE')
+            #print('ONCE')
             for i in reversed(range(3)):
-                print(tempCoords)
+                #print(tempCoords)
                 tempCoords = np.round(LKTrackerFrameToFrame(shrunkImagesOld[i],
                                                 shrunkImagesNew[i],
                                                 tempCoords,
@@ -241,9 +242,10 @@ if __name__ == '__main__':
     # Set up to track top of yellow taxi in traffic.mp4.
     #for frame, coords in LKTracker(cap, np.array([207, 170]), WINDOW_SIZE):
     for frame, coords in test(cap, np.array([207, 170]), WINDOW_SIZE):
+        #print(coords)
         drawRectangleOnImage(frame, coords, WINDOW_SIZE, WINDOW_SIZE, (0, 0, 255))
         cv2.imshow('Frame', frame)
-        cv2.waitKey(50)
+        cv2.waitKey(30)
 
     #_, frameNew = cap.read()
     #shrunkImages = generateShrinkPyramid(frameNew, 3)
