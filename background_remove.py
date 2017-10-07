@@ -1,3 +1,6 @@
+import cv2
+import numpy as np
+
 def removeBackground(video):
     """Removes static background from a video.
 
@@ -5,12 +8,46 @@ def removeBackground(video):
     frame.
 
     Args:
-        video: Numpy array with shape (num_frames, frame_width, frame_height, 3)
+        video: Numpy array with shape (numFrames, frameWidth, frameHeight, 3)
             representing the video.
 
     Returns:
         Video with the static background removed. The return values is a numpy
         array with same shape as the input video.
     """
-    average = numpy.zeros(video.shape[1 : ])
-    
+    average = np.zeros(video.shape[1 : ])
+
+    for frameIdx, frame in enumerate(video):
+        average = average * frameIdx / (frameIdx + 1) + frame / (frameIdx + 1)
+
+    # Numpy broadcasting takes care of subtracting average from each frame.
+    return (video - average).astype(np.uint8)
+
+if __name__ == '__main__':
+    cap = cv2.VideoCapture('traffic.mp4')
+
+    if not cap.isOpened():
+        raise IOError("Error opening video file.")
+
+    frameNum = 0
+    video = []
+
+    while cap.isOpened():
+        frameNum += 1
+        if frameNum % 40 == 0:
+            print(frameNum)
+        ret, frame = cap.read()
+        # print(frame.shape)
+        if ret:
+            video.append(frame)
+            cv2.imshow('Frame', frame)
+            cv2.waitKey(30)
+
+    video = np.array(video)
+    print(video.shape)
+
+    videoBackgroundRemoved = removeBackground(video)
+
+    for frame in videoBackgroundRemoved:
+        cv2.imshow('Frame', frame)
+        cv2.waitKey(30)
