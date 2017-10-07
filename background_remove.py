@@ -21,7 +21,12 @@ def removeBackground(video):
         average = average * frameIdx / (frameIdx + 1) + frame / (frameIdx + 1)
 
     # Numpy broadcasting takes care of subtracting average from each frame.
-    return (video - average).astype(np.uint8)
+    diff = video - average
+
+    # Note: Negative values need to be set to 0 because converting to uint8
+    # turns -2 into 254.
+    diff[diff < 0] = 0
+    return diff.astype(np.uint8)
 
 if __name__ == '__main__':
     cap = cv2.VideoCapture('traffic.mp4')
@@ -29,23 +34,17 @@ if __name__ == '__main__':
     if not cap.isOpened():
         raise IOError("Error opening video file.")
 
-    frameNum = 0
     video = []
 
     while cap.isOpened():
-        frameNum += 1
-        if frameNum % 40 == 0:
-            print(frameNum)
         ret, frame = cap.read()
-        # print(frame.shape)
-        if ret:
-            video.append(frame)
-            cv2.imshow('Frame', frame)
-            cv2.waitKey(30)
+
+        if not ret:
+            break
+
+        video.append(frame)
 
     video = np.array(video)
-    print(video.shape)
-
     videoBackgroundRemoved = removeBackground(video)
 
     for frame in videoBackgroundRemoved:
