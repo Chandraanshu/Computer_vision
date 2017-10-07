@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 
 def openVideo(fileName):
@@ -41,7 +42,7 @@ def getAllFrames(cap):
 
         video.append(frame)
 
-    return video
+    return np.array(video)
 
 
 def readVideo(fileName):
