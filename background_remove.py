@@ -24,13 +24,11 @@ def removeBackground(video):
     # Numpy broadcasting takes care of subtracting average from each frame.
     diff = video - average
 
-    # Note: Negative values need to be set to 0 because converting to uint8
-    # turns -2 into 254.
+    # Negative values need to be set to 0 because converting to uint8 turns -2
+    # into 254.
     diff[diff < 0] = 0
 
-    # intensities = [[[np.linalg.norm(pixel) for pixel in row] for row in frame] for frame in diff]
-    # mask = coloured = np.tile((intensities > 500)[..., None], 3)
-    # print(mask.shape)
+    # Replace good pixel with original in video.
     diff[diff > 50] = video[diff > 50]
 
     return diff.astype(np.uint8)
