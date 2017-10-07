@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import video_io
 
 def removeBackground(video):
     """Removes static background from a video.
@@ -29,24 +30,6 @@ def removeBackground(video):
     return diff.astype(np.uint8)
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture('traffic.mp4')
-
-    if not cap.isOpened():
-        raise IOError("Error opening video file.")
-
-    video = []
-
-    while cap.isOpened():
-        ret, frame = cap.read()
-
-        if not ret:
-            break
-
-        video.append(frame)
-
-    video = np.array(video)
+    video = video_io.readVideo('traffic.mp4')
     videoBackgroundRemoved = removeBackground(video)
-
-    for frame in videoBackgroundRemoved:
-        cv2.imshow('Frame', frame)
-        cv2.waitKey(30)
+    video_io.displayVideo(videoBackgroundRemoved)
