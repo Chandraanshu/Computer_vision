@@ -5,8 +5,10 @@ import math
 import video_io
 
 
-WINDOW_SIZE = 13  # Must be an odd number
-PYRAMID_DEPTH = 1
+TRACK_WINDOW_SIZE = 13  # Must be an odd number
+BLUR_WINDOW_SIZE = 11
+PYRAMID_DEPTH = 3
+PIXEL_TO_TRACK = np.array([67, 113])
 
 
 def imageShrink(image, size):
@@ -21,25 +23,22 @@ def imageShrink(image, size):
     b = signal.fftconvolve(image[ : , : , 0], gkern, 'same')
     g = signal.fftconvolve(image[ : , : , 1], gkern, 'same')
     r = signal.fftconvolve(image[ : , : , 2], gkern, 'same')
-    return np.dstack([b,g,r]).astype(np.uint8)[ : : 2, : : 2]
+    return np.round(np.dstack([b,g,r])).astype(np.uint8)[ : : 2, : : 2]
 
 
 def generateShrinkPyramid(frame, depth):
     '''
     Generates images half in size, returns as list
-    depth :
-        how many levels deep to go
+        depth: Total number of images in the pyramid
     '''
-    shrunkImages = []
-    window = 11         #NEED TO FINETUNE GAUSS KERNEL SIZE
-    for i in range(depth):
-        if i == 0:
-            shrunkImages.append(imageShrink(frame, window))
-            continue
-        shrunkImages.append(imageShrink(shrunkImages[i-1], window))
-        newWindow = math.ceil(window/2)      #Gauss window size needs to reduce as the image gets smaller, else the blurring is excessive
-        if newWindow % 2 == 0 : newWindow = newWindow + 1
-        window = newWindow
+    shrunkImages = [frame]
+    window = BLUR_WINDOW_SIZE  #NEED TO FINETUNE GAUSS KERNEL SIZE
+    for i in range(depth - 1):
+        shrunkImages.append(imageShrink(shrunkImages[-1], window))
+        window = window // 2      #Gauss window size needs to reduce as the image gets smaller, else the blurring is excessive
+        if window % 2 == 0:
+            window += + 1
+
     return shrunkImages
 
 
@@ -163,17 +162,26 @@ def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
     shrunkImagesNew = generateShrinkPyramid(frameNew, pyramidDepth)
 
     # Best estimate in smallest pyramid is original position, scaled down.
-    newCoords = pixelCoords // 2 ** pyramidDepth
+    newCoords = pixelCoords // (2 ** (pyramidDepth - 1))
 
     for i in reversed(range(pyramidDepth)):
+        print (i)
+        print (newCoords)
+        print(shrunkImagesNew[i][newCoords[0] - 5 : newCoords[0] + 5, newCoords[1] - 5 : newCoords[1] + 5, 0])
+        currWindowSize = windowSize // (2 ** i)
+        if currWindowSize % 2 == 0:
+            currWindowSize += 1
+
         newCoords = LKTrackerImageToImage(shrunkImagesOld[i],
-                                          pixelCoords // 2 ** (i + 1),
+                                          pixelCoords // (2 ** i),
                                           shrunkImagesNew[i],
                                           newCoords,
-                                          windowSize)
-        newCoords = np.round(newCoords * 2).astype(int)
+                                          currWindowSize)
 
-    return newCoords
+        newCoords = np.round(newCoords * 2).astype(int)
+        print (newCoords // 2)
+
+    return newCoords // 2
 
 
 def drawRectangleOnImage(image, centre, width, height, color):
@@ -184,18 +192,23 @@ if __name__ == '__main__':
     video = video_io.readVideo('traffic.mp4')
 
     # Set up to track top of yellow taxi in traffic.mp4.
-    pixelToTrack = np.array([207, 170])
+    pixelToTrack = PIXEL_TO_TRACK
     for frameIdx in range(len(video) - 1):
-        print(frameIdx)
+        # print(frameIdx)
         pixelToTrack = LKTrackerFrameToFrame(video[frameIdx],
                                              video[frameIdx + 1],
                                              pixelToTrack,
-                                             WINDOW_SIZE,
+                                             TRACK_WINDOW_SIZE,
                                              PYRAMID_DEPTH)
         drawRectangleOnImage(video[frameIdx + 1],
                              pixelToTrack,
-                             WINDOW_SIZE,
-                             WINDOW_SIZE,
+                             TRACK_WINDOW_SIZE,
+                             TRACK_WINDOW_SIZE,
                              (0, 0, 255))
+        cv2.imshow('Frame', video[frameIdx + 1])
+
+        # Press 'q' to close video.
+        if cv2.waitKey(300) & 0xFF == ord('q'):
+            break
 
     video_io.displayVideo(video, FPS=5)
