@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import video_io
 
-GOOD_THRESHOLD = 50
+GOOD_THRESHOLD = 40
 
 def removeBackground(video):
     """Removes static background from a video.
@@ -26,12 +26,14 @@ def removeBackground(video):
     # Numpy broadcasting takes care of subtracting average from each frame.
     diff = video - average
 
-    # Negative values need to be set to 0 because converting to uint8 turns -2
-    # into 254.
-    diff[diff < 0] = 0
-
-    # Replace good pixel with original in video.
-    diff[diff > GOOD_THRESHOLD] = video[diff > GOOD_THRESHOLD]
+    # Note: Negative values need to be set to 0 because converting to uint8
+    # turns -2 into 254.
+    # Get mask for all pixels which have a large positive difference.
+    goodMask = np.any(abs(diff) >= GOOD_THRESHOLD, axis=3)
+    # Replace good pixels with original in video.
+    diff[goodMask] = video[goodMask]
+    # Replace bad pixels with 0.
+    diff[np.invert(goodMask)] = 0
 
     return diff.astype(np.uint8)
 
