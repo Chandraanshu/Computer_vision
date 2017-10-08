@@ -160,7 +160,6 @@ def LKTrackerImageToImage(image1, pixelCoords1, image2,
     d = np.linalg.solve(Z, b)
 
     # Compute new position of pixel
-    # print(pixelCoords + d)
     return pixelCoords2 + d
 
 
@@ -183,78 +182,14 @@ def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
     return newCoords
 
 
-def LKTrackerOld(cap, pixelCoords, windowSize):
-    """Tracks a pixel from frame to frame using the Lucas-Kanade Method.
-
-    In fact, tracks a square window centred at the pixel.
-    The smaller the difference from frame to frame, the better the tracking.
-    Returns a generator object that can be iterated over to give successive
-    positions of the pixel.
-
-    Args:
-        cap: cv2.VideoCapture object representing the video in which to track
-            the pixel.
-        pixelCoords: Numpy array with shape (2, ) giving coordinates of pixel.
-        windowSize: The side length of the square window being tracked.
-
-    Yields:
-        The current frame, and the coordinates of the pixel in that frame. The
-        first value yielded is the original position.
-    """
-    # Get first frame.
-    _, frameNew = cap.read()
-    yield frameNew, pixelCoords
-
-    while cap.isOpened():
-        frameOld = frameNew
-        ret, frameNew = cap.read()
-        if ret:
-            pixelCoords = np.round(LKTrackerFrameToFrame(frameOld,
-                                            frameNew,
-                                            pixelCoords,
-                                            windowSize)).astype(int)
-            yield frameNew, pixelCoords
-
-
 def drawRectangleOnImage(image, centre, width, height, color):
     cv2.rectangle(image, (centre[0] - width // 2, centre[1] - height // 2), (centre[0] + width // 2, centre[1] + height // 2), color=color)
-
-
-def LKTracker(video, pixelCoords, windowSize):
-    _, frameNew = cap.read()
-    #print(pixelCoords)
-    tempCoords = pixelCoords
-    yield frameNew, pixelCoords
-
-    while cap.isOpened():
-        frameOld = frameNew
-        ret, frameNew = cap.read()
-        tempCoords = np.array(np.floor_divide(tempCoords, 8))
-        shrunkImagesOld = generateShrinkPyramid(frameOld, 3)
-        shrunkImagesNew = generateShrinkPyramid(frameNew, 3)
-        if ret:
-            #print('ONCE')
-            for i in reversed(range(3)):
-                #print(tempCoords)
-                tempCoords = np.round(LKTrackerFrameToFrame(shrunkImagesOld[i],
-                                                shrunkImagesNew[i],
-                                                tempCoords,
-                                                windowSize)).astype(int)
-                tempCoords = np.array(np.multiply(tempCoords,2))
-        yield frameNew, tempCoords
 
 
 if __name__ == '__main__':
     video = video_io.readVideo('traffic.mp4')
 
     # Set up to track top of yellow taxi in traffic.mp4.
-    #for frame, coords in LKTracker(cap, np.array([207, 170]), WINDOW_SIZE):
-    # for frame, coords in LKTracker(video, np.array([207, 170]), WINDOW_SIZE):
-    #     #print(coords)
-    #     drawRectangleOnImage(frame, coords, WINDOW_SIZE, WINDOW_SIZE, (0, 0, 255))
-    #     cv2.imshow('Frame', frame)
-    #     cv2.waitKey(30)
-
     pixelToTrack = np.array([207, 170])
     for frameIdx in range(len(video) - 1):
         pixelToTrack = LKTrackerFrameToFrame(video[frameIdx],
@@ -269,10 +204,3 @@ if __name__ == '__main__':
                              (0, 0, 255))
 
     video_io.displayVideo(video, FPS=5)
-
-
-    #_, frameNew = cap.read()
-    #shrunkImages = generateShrinkPyramid(frameNew, 3)
-    #a = imageExpand(shrunkImages[0], 7)
-    #cv2.imshow('Frame',a)
-    #cv2.waitKey(5000)
