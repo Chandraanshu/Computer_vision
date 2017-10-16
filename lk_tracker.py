@@ -8,7 +8,7 @@ import video_io
 TRACK_WINDOW_SIZE = 13  # Must be an odd number
 BLUR_WINDOW_SIZE = 11
 PYRAMID_DEPTH = 3
-PIXEL_TO_TRACK = np.array([67, 113])
+PIXEL_TO_TRACK = np.array([207, 175])
 
 
 def imageShrink(image, size):
@@ -23,7 +23,7 @@ def imageShrink(image, size):
     b = signal.fftconvolve(image[ : , : , 0], gkern, 'same')
     g = signal.fftconvolve(image[ : , : , 1], gkern, 'same')
     r = signal.fftconvolve(image[ : , : , 2], gkern, 'same')
-    return np.round(np.dstack([b,g,r])).astype(np.uint8)[ : : 2, : : 2]
+    return np.dstack([b,g,r]).astype(np.uint8)[ : : 2, : : 2]
 
 
 def generateShrinkPyramid(frame, depth):
@@ -37,7 +37,7 @@ def generateShrinkPyramid(frame, depth):
         shrunkImages.append(imageShrink(shrunkImages[-1], window))
         window = window // 2      #Gauss window size needs to reduce as the image gets smaller, else the blurring is excessive
         if window % 2 == 0:
-            window += + 1
+            window += 1
 
     return shrunkImages
 
@@ -76,11 +76,8 @@ def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
         A numpy array with shape (width, height) containing the pixel-wise
         difference between the given images.
     """
-    diff = (img1[x1 : x1 + width, y1 : y1 + height] -
+    return (img1[x1 : x1 + width, y1 : y1 + height] -
             img2[x2 : x2 + width, y2 : y2 + height])
-    return np.array(
-        [[math.sqrt(np.linalg.norm(x)) for x in row] for row in diff]
-    )
 
 
 def LKTrackerImageToImage(image1, pixelCoords1, image2,
@@ -101,8 +98,8 @@ def LKTrackerImageToImage(image1, pixelCoords1, image2,
         The computed position of the pixel in the new frame, as a numpy array of
         x and y coordinates.
     """
-    image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2Lab)
-    image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2Lab)
+    image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+    image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
 
     # Get top left corner of window.
     topLeftX1, topLeftY1 = pixelCoords1 - windowSize // 2
@@ -165,21 +162,13 @@ def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
     newCoords = pixelCoords // (2 ** (pyramidDepth - 1))
 
     for i in reversed(range(pyramidDepth)):
-        print (i)
-        print (newCoords)
-        print(shrunkImagesNew[i][newCoords[0] - 5 : newCoords[0] + 5, newCoords[1] - 5 : newCoords[1] + 5, 0])
-        currWindowSize = windowSize // (2 ** i)
-        if currWindowSize % 2 == 0:
-            currWindowSize += 1
-
         newCoords = LKTrackerImageToImage(shrunkImagesOld[i],
                                           pixelCoords // (2 ** i),
                                           shrunkImagesNew[i],
                                           newCoords,
-                                          currWindowSize)
+                                          windowSize)
 
         newCoords = np.round(newCoords * 2).astype(int)
-        print (newCoords // 2)
 
     return newCoords // 2
 
