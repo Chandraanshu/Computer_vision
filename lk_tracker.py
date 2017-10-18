@@ -150,7 +150,7 @@ def LKTrackerImageToImage(image1, pixelCoords1, image2,
     d = np.linalg.solve(Z, b)
 
     # Compute new position of pixel
-    return pixelCoords2 + d
+    return pixelCoords2 + d[: : -1]
 
 
 def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     video = video_io.readVideo('traffic.mp4')
 
     # Set up to track top of yellow taxi in traffic.mp4.
-    pixelToTrack = PIXEL_TO_TRACK
+    pixelToTrack = PIXEL_TO_TRACK[: : -1]
     for frameIdx in range(len(video) - 1):
         # print(frameIdx)
         pixelToTrack = LKTrackerFrameToFrame(video[frameIdx],
@@ -190,7 +190,7 @@ if __name__ == '__main__':
                                              TRACK_WINDOW_SIZE,
                                              PYRAMID_DEPTH)
         drawRectangleOnImage(video[frameIdx + 1],
-                             pixelToTrack,
+                             pixelToTrack[: : -1],
                              TRACK_WINDOW_SIZE,
                              TRACK_WINDOW_SIZE,
                              (0, 0, 255))
