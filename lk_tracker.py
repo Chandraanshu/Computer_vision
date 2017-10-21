@@ -7,35 +7,49 @@ import video_io
 
 TRACK_WINDOW_SIZE = 13  # Must be an odd number
 BLUR_WINDOW_SIZE = 11
-PYRAMID_DEPTH = 3
-PIXEL_TO_TRACK = np.array([207, 175])
+PYRAMID_DEPTH = 2
+PIXEL_TO_TRACK = np.array([190, 105])
+NUM_FRAMES_TO_TRACK = 100
 
 
 def imageShrink(image, size):
-    """
-    Reduces by half, uses gausian filter
-    size :
-        size of Gauss kernel to use
+    """Reduces the size of an image by half using a Gaussian filter.
+
+    Args:
+        image: Numpy array containing the image to be shrunk.
+        size: Size of the Gaussian filter to use.
+
+    Returns:
+        Shrunk image as an np array.
     """
     gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
     total = np.sum(gkern)
-    gkern = gkern / total     #Sum of Gauss kernel must be one.... Doesn't work without it
+    gkern = gkern / total  # Normalize sum of kernel to be 1.
     b = signal.fftconvolve(image[ : , : , 0], gkern, 'same')
     g = signal.fftconvolve(image[ : , : , 1], gkern, 'same')
     r = signal.fftconvolve(image[ : , : , 2], gkern, 'same')
     return np.dstack([b,g,r]).astype(np.uint8)[ : : 2, : : 2]
 
 
-def generateShrinkPyramid(frame, depth):
-    '''
-    Generates images half in size, returns as list
-        depth: Total number of images in the pyramid
-    '''
-    shrunkImages = [frame]
-    window = BLUR_WINDOW_SIZE  #NEED TO FINETUNE GAUSS KERNEL SIZE
+def generateShrinkPyramid(image, depth):
+    """Generates an image pyramid, composed of progressively smaller images.
+
+    First image in the list is the original one.
+
+    Args:
+        image: The image for which the pyramid will be constructed.
+        depth: Total number of images in the pyramid.
+
+    Returns:
+        List of images, represented as numpy arrays.
+    """
+    shrunkImages = [image]
+    window = BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
     for i in range(depth - 1):
         shrunkImages.append(imageShrink(shrunkImages[-1], window))
-        window = window // 2      #Gauss window size needs to reduce as the image gets smaller, else the blurring is excessive
+        # Gauss window size needs to reduce as the image gets smaller,
+        # else the blurring is excessive.
+        window = window // 2
         if window % 2 == 0:
             window += 1
 
@@ -57,77 +71,78 @@ def imageExpand(image, size):
 
 
 def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
-    """Computes the pixel-wise difference between Lab* images.
-    Requires images to be using the Lab* colour encoding scheme.
-    Images should be passed in as numpy arrays.
-    The difference algorithm used is Delta E (CIE 1976).
+    """Computes the pixel-wise difference between grayscale images.
+
     Difference is only computed for window whose top left corner is at (x, y)
     and has width and height as given.
+
     Args:
         img1: Numpy array containing first image.
-        x1: x coordinate of top left corner of window in image1.
-        y1: y coordinate of top left corner of window in image1.
+        x1: x coordinate of top left corner of window in img1.
+        y1: y coordinate of top left corner of window in img1.
         img2: Numpy array containing second image.
-        x2: x coordinate of top left corner of window in image2.
-        y2: y coordinate of top left corner of window in image2.
+        x2: x coordinate of top left corner of window in img2.
+        y2: y coordinate of top left corner of window in img2.
         width: Width of window.
         height: Height of window.
     Returns:
-        A numpy array with shape (width, height) containing the pixel-wise
-        difference between the given images.
+        A numpy array containing the pixel-wise difference between the given
+        images.
     """
     return (img1[x1 : x1 + width, y1 : y1 + height] -
             img2[x2 : x2 + width, y2 : y2 + height])
 
 
-def LKTrackerImageToImage(image1, pixelCoords1, image2,
-                          pixelCoords2, windowSize):
+def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
+                          pixelCoordsNew, windowSize):
     """Tracks a pixel from one image to another using the Lucas-Kanade Method.
+
     In fact, tracks a square window centred at the pixel.
     The smaller the difference between the two frames, the better the tracking.
     Requires images to be using the BGR colour encoding scheme.
+
     Args:
-        image1: The original frame.
-        pixelCoords1: Numpy array with shape (2, ) giving original coordinates
-            of pixel (in image1).
-        image2: The new frame.
-        pixelCoords2: Numpy array with shape (2, ) giving best approximation for
-            coordinates of pixel in image2.
+        imageOld: The original image.
+        pixelCoordsOld: Numpy array with shape (2, ) giving original coordinates
+            of pixel in imageOld.
+        imageNew: The new image.
+        pixelCoordsNew: Numpy array with shape (2, ) giving best approximation for
+            coordinates of pixel in imageNew.
         windowSize: The side length of the square window being tracked.
     Returns:
         The computed position of the pixel in the new frame, as a numpy array of
         x and y coordinates.
     """
-    image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-    image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+    imageOld = cv2.cvtColor(imageOld, cv2.COLOR_BGR2GRAY)
+    imageNew = cv2.cvtColor(imageNew, cv2.COLOR_BGR2GRAY)
 
     # Get top left corner of window.
-    topLeftX1, topLeftY1 = pixelCoords1 - windowSize // 2
-    topLeftX2, topLeftY2 = pixelCoords2 - windowSize // 2
+    topLeftX1, topLeftY1 = pixelCoordsOld - windowSize // 2
+    topLeftX2, topLeftY2 = pixelCoordsNew - windowSize // 2
 
     # Compute horizontal and vertical gradients for the original frame.
-    gx = pixelDiffImages(image1[:, 1 : ],
+    gx = pixelDiffImages(imageOld[:, 1 : ],
                          topLeftX1,
                          topLeftY1,
-                         image1[:, : -1],
+                         imageOld[:, : -1],
                          topLeftX1,
                          topLeftY1,
                          windowSize,
                          windowSize)
-    gy = pixelDiffImages(image1[1 :, :],
+    gy = pixelDiffImages(imageOld[1 :, :],
                          topLeftX1,
                          topLeftY1,
-                         image1[ : -1, :],
+                         imageOld[ : -1, :],
                          topLeftX1,
                          topLeftY1,
                          windowSize,
                          windowSize)
 
     # Compute difference between original and new frames.
-    diff = pixelDiffImages(image1,
+    diff = pixelDiffImages(imageOld,
                            topLeftX1,
                            topLeftY1,
-                           image2,
+                           imageNew,
                            topLeftX2,
                            topLeftY2,
                            windowSize,
@@ -150,11 +165,27 @@ def LKTrackerImageToImage(image1, pixelCoords1, image2,
     d = np.linalg.solve(Z, b)
 
     # Compute new position of pixel
-    return pixelCoords2 + d[: : -1]
+    return pixelCoordsNew + d[: : -1]
 
 
 def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
                           windowSize, pyramidDepth):
+    """Tracks a pixel from frame to frame using Lucas-Kanade over a pyramid.
+
+    In fact, tracks a square window centred at the pixel.
+
+    Args:
+        frameOld: The original frame.
+        frameNew: The updated frame.
+        pixelCoords: Numpy array with shape (2, ) giving coordinates of the
+            pixel being tracked.
+        windowSize: The side length of the square window being tracked.
+        pyramidDepth: The depth of the pyramid being used.
+
+    Returns:
+        Numpy array with shape (2, ) giving the updated coordinates of the
+        pixel being tracked.
+    """
     shrunkImagesOld = generateShrinkPyramid(frameOld, pyramidDepth)
     shrunkImagesNew = generateShrinkPyramid(frameNew, pyramidDepth)
 
@@ -174,30 +205,39 @@ def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
 
 
 def drawRectangleOnImage(image, centre, width, height, color):
-    cv2.rectangle(image, (centre[0] - width // 2, centre[1] - height // 2), (centre[0] + width // 2, centre[1] + height // 2), color=color)
+    """Draws a rectangle on the given image.
+
+    Args:
+        image: The image on which the rectangle is to be drawn.
+        centre: The coordinates of the centre of the rectangle.
+        width: The width of the rectangle.
+        height: The height of the rectangle.
+        color: The color of the rectangle.
+    """
+    cv2.rectangle(image,
+                  (centre[0] - width // 2, centre[1] - height // 2),
+                  (centre[0] + width // 2, centre[1] + height // 2),
+                  color=color)
 
 
 if __name__ == '__main__':
     video = video_io.readVideo('traffic.mp4')
 
-    # Set up to track top of yellow taxi in traffic.mp4.
+    # Convert from image coordinates to matrix coordinates.
     pixelToTrack = PIXEL_TO_TRACK[: : -1]
-    for frameIdx in range(len(video) - 1):
-        # print(frameIdx)
+    pixelPositions = [pixelToTrack]
+    for frameIdx in range(min(NUM_FRAMES_TO_TRACK, len(video) - 1)):
         pixelToTrack = LKTrackerFrameToFrame(video[frameIdx],
                                              video[frameIdx + 1],
                                              pixelToTrack,
                                              TRACK_WINDOW_SIZE,
                                              PYRAMID_DEPTH)
-        drawRectangleOnImage(video[frameIdx + 1],
-                             pixelToTrack[: : -1],
+        pixelPositions.append(pixelToTrack)
+
+    for i, pixelPosition in enumerate(pixelPositions):
+        drawRectangleOnImage(video[i],
+                             pixelPosition[: : -1],
                              TRACK_WINDOW_SIZE,
                              TRACK_WINDOW_SIZE,
                              (0, 0, 255))
-        cv2.imshow('Frame', video[frameIdx + 1])
-
-        # Press 'q' to close video.
-        if cv2.waitKey(300) & 0xFF == ord('q'):
-            break
-
     video_io.displayVideo(video, FPS=5)
