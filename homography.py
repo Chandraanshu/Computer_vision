@@ -5,26 +5,41 @@ import collections
 import cv2
 
 
-def rectifyPerspective(originalImage, homographyMatrix):
+def applyHomography(originalImage, homographyMatrix):
+    """Transforms the image according to a homography.
+
+    Note that the resultant picture would likely not fit in the same area as the
+    previous, so the result will be cropped accordingly.
+
+    Args:
+        originalImage: The image to be transformed.
+        homographyMatrix: The homography matrix to be applied to the image.
+
+    Returns:
+        The transformed image.
+    """
     numRows = originalImage.shape[0]
     numCols = originalImage.shape[1]
 
+    # Form array of point coordinates.
     imagePoints = []
-
     for i in range(numRows):
         for j in range(numCols):
             imagePoints.append([i, j, 1])
-
     imagePoints = np.array(imagePoints).transpose()
+
+    # Compute positions of points after applying the homography matrix.
     transformedImage = np.matmul(homographyMatrix, imagePoints)
     transformedImage[np.abs(transformedImage) < 1e-15] = 0
+    assert np.all(np.abs(transformedImage[2] - 1) < 1e-10)
 
-    assert np.all(transformedImage[2] == 1)
-
+    # Defaultdict(list) has a default value of []
+    # newMapping maps the transformed points to pixel values.
+    # One point can have multiple values due to rounding.
     newMapping = collections.defaultdict(list)
 
     for i in range(numRows * numCols):
-        newPoint = tuple(np.round(transformedImage[:2, i]).astype(int) + np.array([0, 480]))
+        newPoint = tuple(np.round(transformedImage[:2, i]).astype(int))
         oldPoint = (i // numCols, i % numCols)
         newMapping[newPoint].append(originalImage[oldPoint])
 
@@ -32,6 +47,9 @@ def rectifyPerspective(originalImage, homographyMatrix):
 
     for i in range(numRows):
         for j in range(numCols):
+            # Map each coordinate in the new image to an average of all pixel
+            # values assigned to that coordinate under newMapping.
+            # If no such mapping was specified, make the pixel white.
             newImage[i, j] = np.average(newMapping.get((i, j), [[255, 255, 255]]), axis=0)
 
     return np.array(newImage).astype(np.uint8)
@@ -70,7 +88,7 @@ def computeHomography(originalPoints, finalPoints):
     solution = Vt[-1]
 
     # Last element must not be close to 0, since we're normalizing using that.
-    assert solution[-1] > 1e-15
+    assert abs(solution[-1]) > 1e-15
 
     solution /= solution[-1]
 
@@ -81,21 +99,25 @@ def computeHomography(originalPoints, finalPoints):
 
 
 if __name__ == '__main__':
+    frame = video_io.readVideo('traffic.mp4')[0]
+    frameHeight = frame.shape[0]
+    frameWidth = frame.shape[1]
+
     originalPoints = np.array([
-        [1, 1],
-        [-1, 1],
-        [-1, -1],
-        [1, -1],
+        [0, 0],
+        [0, frameWidth],
+        [frameHeight, frameWidth],
+        [frameHeight, 0],
     ])
     finalPoints = np.array([
-        [1, -1],
-        [1, 1],
-        [-1, 1],
-        [-1, -1],
+        [0, frameHeight],
+        [frameWidth, frameHeight],
+        [frameWidth, 0],
+        [0, 0],
     ])
-    homography = computeHomography(originalPoints, finalPoints)
-    frame = video_io.readVideo('traffic.mp4')[0]
 
-    transformedImage = rectifyPerspective(frame, homography)
+    homography = computeHomography(originalPoints, finalPoints)
+
+    transformedImage = applyHomography(frame, homography)
     cv2.imshow('Frame', transformedImage)
     cv2.waitKey(10000)
