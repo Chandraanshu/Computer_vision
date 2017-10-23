@@ -1,5 +1,40 @@
 import numpy as np
 from scipy.linalg import svd
+import video_io
+import collections
+import cv2
+
+
+def rectifyPerspective(originalImage, homographyMatrix):
+    numRows = originalImage.shape[0]
+    numCols = originalImage.shape[1]
+
+    imagePoints = []
+
+    for i in range(numRows):
+        for j in range(numCols):
+            imagePoints.append([i, j, 1])
+
+    imagePoints = np.array(imagePoints).transpose()
+    transformedImage = np.matmul(homographyMatrix, imagePoints)
+    transformedImage[np.abs(transformedImage) < 1e-15] = 0
+
+    assert np.all(transformedImage[2] == 1)
+
+    newMapping = collections.defaultdict(list)
+
+    for i in range(numRows * numCols):
+        newPoint = tuple(np.round(transformedImage[:2, i]).astype(int) + np.array([0, 480]))
+        oldPoint = (i // numCols, i % numCols)
+        newMapping[newPoint].append(originalImage[oldPoint])
+
+    newImage = np.zeros(originalImage.shape)
+
+    for i in range(numRows):
+        for j in range(numCols):
+            newImage[i, j] = np.average(newMapping.get((i, j), [[255, 255, 255]]), axis=0)
+
+    return np.array(newImage).astype(np.uint8)
 
 
 def computeHomography(originalPoints, finalPoints):
@@ -53,9 +88,14 @@ if __name__ == '__main__':
         [1, -1],
     ])
     finalPoints = np.array([
-        [-0.2546, -0.1864],
-        [-0.1007, -0.2752],
-        [-0.1007, 0.2752],
-        [-0.2546, 0.1864],
+        [1, -1],
+        [1, 1],
+        [-1, 1],
+        [-1, -1],
     ])
-    print(computeHomography(originalPoints, finalPoints))
+    homography = computeHomography(originalPoints, finalPoints)
+    frame = video_io.readVideo('traffic.mp4')[0]
+
+    transformedImage = rectifyPerspective(frame, homography)
+    cv2.imshow('Frame', transformedImage)
+    cv2.waitKey(10000)
