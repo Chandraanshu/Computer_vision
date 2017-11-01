@@ -5,11 +5,11 @@ import math
 import video_io
 
 
-TRACK_WINDOW_SIZE = 13  # Must be an odd number
+TRACK_WINDOW_SIZE = 21  # Must be an odd number
 BLUR_WINDOW_SIZE = 11
-PYRAMID_DEPTH = 2
-PIXEL_TO_TRACK = np.array([190, 105])
-NUM_FRAMES_TO_TRACK = 100
+PYRAMID_DEPTH = 1
+PIXEL_TO_TRACK = np.array([150, 200])
+NUM_FRAMES_TO_TRACK = 200
 
 
 def imageShrink(image, size):
@@ -221,18 +221,38 @@ def drawRectangleOnImage(image, centre, width, height, color):
 
 
 if __name__ == '__main__':
-    video = video_io.readVideo('traffic.mp4')
+    video = video_io.readVideo('Chanda1.mp4')
+    video = np.transpose(video, (0, 2, 1, 3))
+    # video_io.displayVideo(video)
+
+    # for frame in video:
+    #     cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+    #     cv2.resizeWindow('Frame', 600, 400)
+    #     cv2.imshow('Frame', frame)
+    #     cv2.waitKey(33)
 
     # Convert from image coordinates to matrix coordinates.
     pixelToTrack = PIXEL_TO_TRACK[: : -1]
     pixelPositions = [pixelToTrack]
     for frameIdx in range(min(NUM_FRAMES_TO_TRACK, len(video) - 1)):
+        newFrame = cv2.cvtColor(cv2.cvtColor(video[frameIdx].copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
+        drawRectangleOnImage(newFrame,
+                             pixelPositions[-1][: : -1],
+                             TRACK_WINDOW_SIZE,
+                             TRACK_WINDOW_SIZE,
+                             (0, 0, 255))
+        cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('Frame', 600, 400)
+        cv2.imshow('Frame', newFrame)
+        cv2.waitKey(250)
         pixelToTrack = LKTrackerFrameToFrame(video[frameIdx],
                                              video[frameIdx + 1],
                                              pixelToTrack,
                                              TRACK_WINDOW_SIZE,
                                              PYRAMID_DEPTH)
         pixelPositions.append(pixelToTrack)
+        if frameIdx % 10 == 0:
+            print(frameIdx)
 
     for i, pixelPosition in enumerate(pixelPositions):
         drawRectangleOnImage(video[i],
