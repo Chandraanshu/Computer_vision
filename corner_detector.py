@@ -8,7 +8,7 @@ import utils
 
 
 if __name__ == '__main__':
-    video = video_io.readVideo('traffic.mp4')
+    video = video_io.readVideo('Pbox.mp4')
     frame = video[0]
     nframe = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # nframe = misc.imread('orchid_gray.jpg', 'F')
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     Ixy = gx * gy
     Iyy = gy * gy
 
-    FULLWIN = 13
+    FULLWIN = 21
 
     gkern = np.outer(signal.gaussian(FULLWIN, 2.5), signal.gaussian(FULLWIN, 2.5))
 
@@ -66,5 +66,5 @@ if __name__ == '__main__':
 
     # print(coloured.shape)
     plt.imshow(nframe, cmap='gray')
-    
+
     plt.show()

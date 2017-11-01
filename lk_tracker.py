@@ -3,12 +3,13 @@ import numpy as np
 from scipy import signal
 import math
 import video_io
+import utils
 
 
-TRACK_WINDOW_SIZE = 21  # Must be an odd number
+TRACK_WINDOW_SIZE = 41  # Must be an odd number
 BLUR_WINDOW_SIZE = 11
-PYRAMID_DEPTH = 1
-PIXEL_TO_TRACK = np.array([150, 200])
+PYRAMID_DEPTH = 3
+PIXEL_TO_TRACK = np.array([100, 280])
 NUM_FRAMES_TO_TRACK = 200
 
 
@@ -25,10 +26,10 @@ def imageShrink(image, size):
     gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
     total = np.sum(gkern)
     gkern = gkern / total  # Normalize sum of kernel to be 1.
-    b = signal.fftconvolve(image[ : , : , 0], gkern, 'same')
-    g = signal.fftconvolve(image[ : , : , 1], gkern, 'same')
-    r = signal.fftconvolve(image[ : , : , 2], gkern, 'same')
-    return np.dstack([b,g,r]).astype(np.uint8)[ : : 2, : : 2]
+    # b = signal.fftconvolve(image[ : , : , 0], gkern, 'same')
+    # g = signal.fftconvolve(image[ : , : , 1], gkern, 'same')
+    return signal.fftconvolve(image, gkern, 'same').astype(np.uint8)[ : : 2, : : 2]
+    # return np.dstack([b,g,r]).astype(np.uint8)
 
 
 def generateShrinkPyramid(image, depth):
@@ -59,7 +60,7 @@ def generateShrinkPyramid(image, depth):
 def imageExpand(image, size):
     gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
     total = gkern.sum()
-    gkern = gkern/total
+    gkern = gkern / total
     expand = np.zeros((image.shape[0]*2, image.shape[1]*2, 3), dtype=np.float64)
     expand[::2,::2] = image[:,:,:]
     b = signal.fftconvolve(expand[:,:,0], gkern, 'same')
@@ -68,29 +69,6 @@ def imageExpand(image, size):
     expand = np.dstack([b,g,r])
     expand = expand.astype(np.uint8)
     return expand
-
-
-def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
-    """Computes the pixel-wise difference between grayscale images.
-
-    Difference is only computed for window whose top left corner is at (x, y)
-    and has width and height as given.
-
-    Args:
-        img1: Numpy array containing first image.
-        x1: x coordinate of top left corner of window in img1.
-        y1: y coordinate of top left corner of window in img1.
-        img2: Numpy array containing second image.
-        x2: x coordinate of top left corner of window in img2.
-        y2: y coordinate of top left corner of window in img2.
-        width: Width of window.
-        height: Height of window.
-    Returns:
-        A numpy array containing the pixel-wise difference between the given
-        images.
-    """
-    return (img1[x1 : x1 + width, y1 : y1 + height] -
-            img2[x2 : x2 + width, y2 : y2 + height])
 
 
 def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
@@ -113,23 +91,44 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
         The computed position of the pixel in the new frame, as a numpy array of
         x and y coordinates.
     """
-    imageOld = cv2.cvtColor(imageOld, cv2.COLOR_BGR2GRAY)
-    imageNew = cv2.cvtColor(imageNew, cv2.COLOR_BGR2GRAY)
+    # imageOld = cv2.cvtColor(imageOld, cv2.COLOR_BGR2GRAY)
+    # imageNew = cv2.cvtColor(imageNew, cv2.COLOR_BGR2GRAY)
 
     # Get top left corner of window.
     topLeftX1, topLeftY1 = pixelCoordsOld - windowSize // 2
     topLeftX2, topLeftY2 = pixelCoordsNew - windowSize // 2
 
     # Compute horizontal and vertical gradients for the original frame.
-    gx = pixelDiffImages(imageOld[:, 1 : ],
-                         topLeftX1,
+    gx = utils.pixelDiffImages(imageOld[:, 1 : ],
+                               topLeftX1,
+                               topLeftY1 - 1,
+                               imageOld[:, : -1],
+                               topLeftX1,
+                               topLeftY1 - 1,
+                               windowSize,
+                               windowSize)
+    gx2 = utils.pixelDiffImages(imageOld[:, 1 : ],
+                               topLeftX1,
+                               topLeftY1,
+                               imageOld[:, : -1],
+                               topLeftX1,
+                               topLeftY1,
+                               windowSize,
+                               windowSize)
+    #gx = (gx1 + gx2)
+    #gx = (np.greater(abs(gx1),abs(gx2)) ? gx1 : gx2
+    #mesky1 =
+    #gx = gx1 if (np.greater(abs(gx1),abs(gx2))) else gx2
+
+    gy = utils.pixelDiffImages(imageOld[1 :, :],
+                         topLeftX1 - 1,
                          topLeftY1,
-                         imageOld[:, : -1],
-                         topLeftX1,
+                         imageOld[ : -1, :],
+                         topLeftX1 - 1,
                          topLeftY1,
                          windowSize,
                          windowSize)
-    gy = pixelDiffImages(imageOld[1 :, :],
+    gy2 = utils.pixelDiffImages(imageOld[1 :, :],
                          topLeftX1,
                          topLeftY1,
                          imageOld[ : -1, :],
@@ -137,9 +136,12 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
                          topLeftY1,
                          windowSize,
                          windowSize)
+    #gy = (gy1 + gy2)
+    #gy = (np.greater(abs(gy1),abs(gy2))) ? gy1 : gy2
+    #gy = gy1 if (np.greater(abs(gy1),abs(gy2))) else gy2
 
     # Compute difference between original and new frames.
-    diff = pixelDiffImages(imageOld,
+    diff = utils.pixelDiffImages(imageOld,
                            topLeftX1,
                            topLeftY1,
                            imageNew,
@@ -157,12 +159,14 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
     gkern = np.outer(signal.gaussian(windowSize, 2.5),
                      signal.gaussian(windowSize, 2.5))
 
+    gkern /= np.sum(gkern)
     # Construct matrices and solve the matrix-vector equation to get the
     # movement of the pixel.
     Z = np.array([[np.sum(Ixx * gkern), np.sum(Ixy * gkern)],
                   [np.sum(Ixy * gkern), np.sum(Iyy * gkern)]])
     b = np.array([np.sum(diff * gx * gkern), np.sum(diff * gy * gkern)])
     d = np.linalg.solve(Z, b)
+    print(d)
 
     # Compute new position of pixel
     return pixelCoordsNew + d[: : -1]
@@ -221,7 +225,7 @@ def drawRectangleOnImage(image, centre, width, height, color):
 
 
 if __name__ == '__main__':
-    video = video_io.readVideo('Chanda1.mp4')
+    video = video_io.readVideo('Remote.mp4')
     video = np.transpose(video, (0, 2, 1, 3))
     # video_io.displayVideo(video)
 
@@ -236,6 +240,7 @@ if __name__ == '__main__':
     pixelPositions = [pixelToTrack]
     for frameIdx in range(min(NUM_FRAMES_TO_TRACK, len(video) - 1)):
         newFrame = cv2.cvtColor(cv2.cvtColor(video[frameIdx].copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
+        newFrame = cv2.flip(newFrame, 1)
         drawRectangleOnImage(newFrame,
                              pixelPositions[-1][: : -1],
                              TRACK_WINDOW_SIZE,
@@ -245,8 +250,12 @@ if __name__ == '__main__':
         cv2.resizeWindow('Frame', 600, 400)
         cv2.imshow('Frame', newFrame)
         cv2.waitKey(250)
-        pixelToTrack = LKTrackerFrameToFrame(video[frameIdx],
-                                             video[frameIdx + 1],
+        oldFrame = cv2.cvtColor(video[frameIdx], cv2.COLOR_BGR2GRAY)
+        oldFrame = cv2.flip(oldFrame, 1)
+        newFrame = cv2.cvtColor(video[frameIdx + 1], cv2.COLOR_BGR2GRAY)
+        newFrame = cv2.flip(newFrame, 1)
+        pixelToTrack = LKTrackerFrameToFrame(oldFrame,
+                                             newFrame,
                                              pixelToTrack,
                                              TRACK_WINDOW_SIZE,
                                              PYRAMID_DEPTH)

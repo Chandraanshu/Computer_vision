@@ -21,5 +21,7 @@ def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
         A numpy array with shape (width, height) containing the pixel-wise
         difference between the given images.
     """
+    img1 = img1.astype(np.float32)
+    img2 = img2.astype(np.float32)
     return (img1[x1 : x1 + width, y1 : y1 + height] -
             img2[x2 : x2 + width, y2 : y2 + height])
