@@ -41,3 +41,4 @@ if __name__ == '__main__':
     video = video_io.readVideo('traffic.mp4')
     videoBackgroundRemoved = removeBackground(video)
     video_io.displayVideo(videoBackgroundRemoved)
+    video_io.writeVideo(videoBackgroundRemoved, 'bg_removed.mp4')
