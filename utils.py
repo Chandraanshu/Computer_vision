@@ -21,8 +21,5 @@ def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
         A numpy array with shape (width, height) containing the pixel-wise
         difference between the given images.
     """
-    diff = (img1[x1 : x1 + width, y1 : y1 + height] -
+    return (img1[x1 : x1 + width, y1 : y1 + height] -
             img2[x2 : x2 + width, y2 : y2 + height])
-    return np.array(
-        [[math.sqrt(np.linalg.norm(x)) for x in row] for row in diff]
-    )

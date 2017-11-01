@@ -10,9 +10,10 @@ import utils
 if __name__ == '__main__':
     video = video_io.readVideo('traffic.mp4')
     frame = video[0]
-    nframe = cv2.cvtColor(frame, cv2.COLOR_BGR2Lab)
-    gx = utils.pixelDiffImages(nframe, 1, 0, nframe, 0, 0, 479, 639)
-    gy = utils.pixelDiffImages(nframe, 0, 1, nframe, 0, 0, 479, 639)
+    nframe = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # nframe = misc.imread('orchid_gray.jpg', 'F')
+    gx = utils.pixelDiffImages(nframe, 0, 1, nframe, 0, 0, nframe.shape[0] - 1, nframe.shape[1] - 1)
+    gy = utils.pixelDiffImages(nframe, 1, 0, nframe, 0, 0, nframe.shape[0] - 1, nframe.shape[1] - 1)
 
     # print(type(gx))
     # print(type(gy))
@@ -25,17 +26,17 @@ if __name__ == '__main__':
 
     gkern = np.outer(signal.gaussian(FULLWIN, 2.5), signal.gaussian(FULLWIN, 2.5))
 
-    Wxx = signal.convolve2d(Ixx, gkern, mode='same')
-    Wxy = signal.convolve2d(Ixy, gkern, mode='same')
-    Wyy = signal.convolve2d(Iyy, gkern, mode='same')
+    Wxx = signal.fftconvolve(Ixx, gkern, mode='same')
+    Wxy = signal.fftconvolve(Ixy, gkern, mode='same')
+    Wyy = signal.fftconvolve(Iyy, gkern, mode='same')
 
     W = np.zeros(Wxx.shape)
 
     for i in range(Wxx.shape[0]):
         if i % 100 == 0:
             print(i)
-            for j in range(Wxx.shape[1]):
-                W[i][j] = min(np.linalg.eigvals([[Wxx[i][j], Wxy[i][j]], [Wxy[i][j], Wyy[i][j]]]))
+        for j in range(Wxx.shape[1]):
+            W[i][j] = min(np.linalg.eigvals([[Wxx[i][j], Wxy[i][j]], [Wxy[i][j], Wyy[i][j]]]))
 
 
     rounded_shape = (np.array(W.shape) // FULLWIN) * FULLWIN
@@ -55,15 +56,15 @@ if __name__ == '__main__':
     row_indices, col_indices = np.unravel_index(indices, W.shape)
 
     # Convert MxN array into MxNx3 by triplicating each element
-    # coloured = np.tile(frame[..., None], 3)
+    # coloured = np.tile(nframe[..., None], 3)
 
     currentAxis = plt.gca()
 
     # Make rectangles on image
     for i, j in zip(row_indices, col_indices):
-        currentAxis.add_patch(Rectangle((j, i), 10, 10, facecolor='none', edgecolor='r'))
+        currentAxis.add_patch(Rectangle((j, i), 15, 15, facecolor='none', edgecolor='r'))
 
     # print(coloured.shape)
-    plt.imshow(frame)
-
+    plt.imshow(nframe, cmap='gray')
+    
     plt.show()
