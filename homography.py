@@ -3,6 +3,7 @@ from scipy.linalg import svd
 import video_io
 import collections
 import cv2
+import time
 
 
 def applyHomography(originalImage, homographyMatrix):
@@ -18,11 +19,14 @@ def applyHomography(originalImage, homographyMatrix):
     Returns:
         The transformed image.
     """
+    start = time.time()
     numRows = originalImage.shape[0]
     numCols = originalImage.shape[1]
+    originalImage = cv2.cvtColor(originalImage, cv2.COLOR_BGR2GRAY)
 
     # Form array of point coordinates.
     imagePoints = []
+    inner_range = range(numCols)
     for i in range(numRows):
         for j in range(numCols):
             imagePoints.append([i, j, 1])
@@ -31,28 +35,34 @@ def applyHomography(originalImage, homographyMatrix):
     # Compute positions of points after applying the homography matrix.
     transformedImage = np.matmul(homographyMatrix, imagePoints)
     transformedImage[np.abs(transformedImage) < 1e-15] = 0
-    assert np.all(np.abs(transformedImage[2] - 1) < 1e-10)
+    transformedImage /= transformedImage[-1]
 
     # Defaultdict(list) has a default value of []
     # newMapping maps the transformed points to pixel values.
     # One point can have multiple values due to rounding.
-    newMapping = collections.defaultdict(list)
+    print('Done transforming')
+    # newMapping = collections.defaultdict(list)
+    newMapping = dict()
+    transformedImage = transformedImage[:2].astype(int)
+
+    # newImage = np.full(originalImage.shape, 255)
 
     for i in range(numRows * numCols):
-        newPoint = tuple(np.round(transformedImage[:2, i]).astype(int))
-        oldPoint = (i // numCols, i % numCols)
-        newMapping[newPoint].append(originalImage[oldPoint])
+        x, y = transformedImage[:, i]
+        newMapping[x, y] = originalImage[i // numCols, i % numCols]
 
-    newImage = np.zeros(originalImage.shape)
+    print('Done mapping')
+
+    newImage = np.empty(originalImage.shape)
 
     for i in range(numRows):
         for j in range(numCols):
-            # Map each coordinate in the new image to an average of all pixel
-            # values assigned to that coordinate under newMapping.
             # If no such mapping was specified, make the pixel white.
-            newImage[i, j] = np.average(newMapping.get((i, j), [[255, 255, 255]]), axis=0)
+            newImage[i, j] = newMapping.get((i, j), 255)
 
-    return np.array(newImage).astype(np.uint8)
+    print('Done changing')
+    print(time.time() - start)
+    return newImage.astype(np.uint8)
 
 
 def computeHomography(originalPoints, finalPoints):
@@ -98,26 +108,68 @@ def computeHomography(originalPoints, finalPoints):
     return np.reshape(solution, (3, 3))
 
 
+def drawRectangleOnImage(image, centre, width, height, color):
+    """Draws a rectangle on the given image.
+
+    Args:
+        image: The image on which the rectangle is to be drawn.
+        centre: The coordinates of the centre of the rectangle.
+        width: The width of the rectangle.
+        height: The height of the rectangle.
+        color: The color of the rectangle.
+    """
+    cv2.rectangle(image,
+                  (centre[0] - width // 2, centre[1] - height // 2),
+                  (centre[0] + width // 2, centre[1] + height // 2),
+                  color=color)
+
+
 if __name__ == '__main__':
-    frame = video_io.readVideo('traffic.mp4')[0]
+    video = video_io.readVideo('shadowTrim.mp4')[320:400]
+
+    video = video[:, :, 500:-300]
+
+    video[np.any(video > 50, axis=3)] = 255
+    # video_io.displayVideo(video)
+
+    frame = video[0]
+
     frameHeight = frame.shape[0]
     frameWidth = frame.shape[1]
 
     originalPoints = np.array([
-        [0, 0],
-        [0, frameWidth],
-        [frameHeight, frameWidth],
-        [frameHeight, 0],
+        [100, 10],
+        [600, 30],
+        [frameHeight - 100, frameWidth - 50],
+        [80, frameWidth - 50],
     ])
     finalPoints = np.array([
-        [0, frameHeight],
-        [frameWidth, frameHeight],
-        [frameWidth, 0],
-        [0, 0],
+        [100, 100],
+        [400, 100],
+        [400, 600],
+        [100, 600],
     ])
-
     homography = computeHomography(originalPoints, finalPoints)
 
-    transformedImage = applyHomography(frame, homography)
-    cv2.imshow('Frame', transformedImage)
-    cv2.waitKey(10000)
+
+    # for point in originalPoints:
+    #     drawRectangleOnImage(frame,
+    #                          list(point)[::-1],
+    #                          6,
+    #                          6,
+    #                          (0, 0, 255))
+
+    # cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('Frame', 600,600)
+    # cv2.imshow('Frame', frame)
+    # cv2.waitKey(3000)
+
+    # originalPoints = [list(point) + [1] for point in originalPoints]
+    # originalPoints = np.array(originalPoints).transpose()
+    # solution = np.matmul(homography, originalPoints)
+    # print(solution / solution[-1])
+
+    for frame in video:
+        transformedFrame = applyHomography(frame, homography)
+        cv2.imshow('Frame', transformedFrame)
+        cv2.waitKey(300)

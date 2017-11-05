@@ -6,10 +6,10 @@ import video_io
 import utils
 
 
-TRACK_WINDOW_SIZE = 41  # Must be an odd number
-BLUR_WINDOW_SIZE = 11
+TRACK_WINDOW_SIZE = 31  # Must be an odd number
+BLUR_WINDOW_SIZE = 17
 PYRAMID_DEPTH = 3
-PIXEL_TO_TRACK = np.array([100, 280])
+PIXEL_TO_TRACK = np.array([109, 300])
 NUM_FRAMES_TO_TRACK = 200
 
 
@@ -99,56 +99,56 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
     topLeftX2, topLeftY2 = pixelCoordsNew - windowSize // 2
 
     # Compute horizontal and vertical gradients for the original frame.
-    gx = utils.pixelDiffImages(imageOld[:, 1 : ],
-                               topLeftX1,
-                               topLeftY1 - 1,
-                               imageOld[:, : -1],
-                               topLeftX1,
-                               topLeftY1 - 1,
-                               windowSize,
-                               windowSize)
-    gx2 = utils.pixelDiffImages(imageOld[:, 1 : ],
-                               topLeftX1,
-                               topLeftY1,
-                               imageOld[:, : -1],
-                               topLeftX1,
-                               topLeftY1,
-                               windowSize,
-                               windowSize)
-    #gx = (gx1 + gx2)
+    gx1 = utils.pixelDiffImages(imageOld,
+                                topLeftX1,
+                                topLeftY1 + 1,
+                                imageOld,
+                                topLeftX1,
+                                topLeftY1,
+                                windowSize,
+                                windowSize)
+    gx2 = utils.pixelDiffImages(imageOld,
+                                topLeftX1,
+                                topLeftY1,
+                                imageOld,
+                                topLeftX1,
+                                topLeftY1 - 1,
+                                windowSize,
+                                windowSize)
+    gx = (gx1 + gx2) / 2
     #gx = (np.greater(abs(gx1),abs(gx2)) ? gx1 : gx2
     #mesky1 =
     #gx = gx1 if (np.greater(abs(gx1),abs(gx2))) else gx2
 
-    gy = utils.pixelDiffImages(imageOld[1 :, :],
-                         topLeftX1 - 1,
-                         topLeftY1,
-                         imageOld[ : -1, :],
-                         topLeftX1 - 1,
-                         topLeftY1,
-                         windowSize,
-                         windowSize)
-    gy2 = utils.pixelDiffImages(imageOld[1 :, :],
-                         topLeftX1,
-                         topLeftY1,
-                         imageOld[ : -1, :],
-                         topLeftX1,
-                         topLeftY1,
-                         windowSize,
-                         windowSize)
-    #gy = (gy1 + gy2)
+    gy1 = utils.pixelDiffImages(imageOld,
+                                topLeftX1 + 1,
+                                topLeftY1,
+                                imageOld,
+                                topLeftX1,
+                                topLeftY1,
+                                windowSize,
+                                windowSize)
+    gy2 = utils.pixelDiffImages(imageOld,
+                                topLeftX1,
+                                topLeftY1,
+                                imageOld,
+                                topLeftX1 - 1,
+                                topLeftY1,
+                                windowSize,
+                                windowSize)
+    gy = (gy1 + gy2) / 2
     #gy = (np.greater(abs(gy1),abs(gy2))) ? gy1 : gy2
     #gy = gy1 if (np.greater(abs(gy1),abs(gy2))) else gy2
 
     # Compute difference between original and new frames.
     diff = utils.pixelDiffImages(imageOld,
-                           topLeftX1,
-                           topLeftY1,
-                           imageNew,
-                           topLeftX2,
-                           topLeftY2,
-                           windowSize,
-                           windowSize)
+                                 topLeftX1,
+                                 topLeftY1,
+                                 imageNew,
+                                 topLeftX2,
+                                 topLeftY2,
+                                 windowSize,
+                                 windowSize)
 
     # Compute components of Harris matrix.
     Ixx = gx ** 2
