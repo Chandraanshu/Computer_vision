@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
     video = video[:, :, 500:-300]
 
-    video[np.any(video > 50, axis=3)] = 255
+    video[np.any(video > 40, axis=3)] = 255
     # video_io.displayVideo(video)
 
     frame = video[0]
@@ -159,8 +159,8 @@ if __name__ == '__main__':
     #                          6,
     #                          (0, 0, 255))
 
-    # cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
-    # cv2.resizeWindow('Frame', 600,600)
+    #cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+    #cv2.resizeWindow('Frame', 600,600)
     # cv2.imshow('Frame', frame)
     # cv2.waitKey(3000)
 
@@ -171,5 +171,8 @@ if __name__ == '__main__':
 
     for frame in video:
         transformedFrame = applyHomography(frame, homography)
+        transformedFrame[450:] = 255
+        transformedFrame[:,300:] = 255
         cv2.imshow('Frame', transformedFrame)
         cv2.waitKey(300)
+

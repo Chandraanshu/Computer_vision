@@ -38,7 +38,17 @@ def removeBackground(video):
     return diff.astype(np.uint8)
 
 if __name__ == '__main__':
-    video = video_io.readVideo('traffic.mp4')
-    videoBackgroundRemoved = removeBackground(video)
-    video_io.displayVideo(videoBackgroundRemoved)
-    video_io.writeVideo(videoBackgroundRemoved, 'bg_removed.mp4')
+    video = (video_io.readVideo('WALL.MOV')[0:250]).astype(np.float32)
+    #videoBackgroundRemoved = removeBackground(video)
+    first_frame = video[1].copy()
+    
+    cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('Frame', 600,600)
+    for frame in video:
+        new_video = np.abs(frame - first_frame)
+        goodMask = np.any(new_video >= 40, axis=2)
+        frame[np.invert(goodMask)] = 255 
+        cv2.imshow('Frame', frame.astype(np.uint8))  
+        cv2.waitKey(50)
+    # video_io.displayVideo(video.astype(np.uint8))
+    #video_io.writeVideo(videoBackgroundRemoved, 'bg_removed.mp4')
