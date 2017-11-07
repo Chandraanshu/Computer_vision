@@ -6,55 +6,6 @@ import cv2
 import time
 
 
-def applyHomography(originalImage, homographyMatrix, newPoints, oldPoints):
-    """Transforms the image according to a homography.
-
-    Note that the resultant picture would likely not fit in the same area as the
-    previous, so the result will be cropped accordingly.
-
-    Args:
-        originalImage: The image to be transformed.
-        homographyMatrix: The homography matrix to be applied to the image.
-
-    Returns:
-        The transformed image.
-    """
-    start = time.time()
-    originalImage = cv2.cvtColor(originalImage, cv2.COLOR_BGR2GRAY)
-
-    newImage = np.full(originalImage.shape, 255)
-    newImage[newPoints[0], newPoints[1]] = originalImage[oldPoints[0], oldPoints[1]]
-
-    print(time.time() - start)
-    return newImage.astype(np.uint8)
-
-
-def computeMapping(imageHeight, imageWidth, homographyMatrix):
-    # Form array of point coordinates.
-    imagePoints = []
-    inner_range = range(imageWidth)
-    for i in range(imageHeight):
-        for j in range(imageWidth):
-            imagePoints.append([i, j, 1])
-    imagePoints = np.array(imagePoints).transpose()
-
-    # Compute positions of points after applying the homography matrix.
-    newPositions = np.matmul(homographyMatrix, imagePoints)
-    newPositions[np.abs(newPositions) < 1e-15] = 0
-    newPositions = np.round((newPositions / newPositions[-1])[:2]).astype(int)
-
-    mapping = {}
-
-    for i in range(imageHeight * imageWidth):
-        x, y = newPositions[:, i]
-        if 0 <= x and x < imageHeight and 0 <= y and y < imageWidth:
-            mapping[x, y] = (i // imageWidth, i % imageWidth)
-
-    newPoints, oldPoints = mapping.keys(), mapping.values()
-    newPoints, oldPoints = list(map(list, newPoints)), list(map(list, oldPoints))
-    return np.array(newPoints).T, np.array(oldPoints).T
-
-
 def computeHomography(originalPoints, finalPoints):
     """Compute homography matrix transforming one plane into another.
 
@@ -96,6 +47,71 @@ def computeHomography(originalPoints, finalPoints):
     solution[np.abs(solution) < 1e-15] = 0
 
     return np.reshape(solution, (3, 3))
+
+
+def computeMapping(imageHeight, imageWidth, homographyMatrix):
+    """Computes a mapping from old coordinates to new, under a given homography.
+
+    Only points for which the new coordinates lie within the bounds of the
+    original image are kept.
+
+    Args:
+        imageHeight: Height of the image.
+        imageWidth: Width of the image.
+        homographyMatrix: A matrix representing the homography which transforms
+            the image.
+
+    Returns:
+        Coordinates of the new and old points. Each of these is returned as a
+        numpy array with shape (2, numPoints), giving x and y coordinates in
+        separate rows.
+    """
+    # Form array of point coordinates.
+    imagePoints = [[i, j, 1] for i in range(imageHeight) for j in range(imageWidth)]
+    imagePoints = np.array(imagePoints).T
+
+    # Compute positions of points after applying the homography matrix.
+    newPositions = np.matmul(homographyMatrix, imagePoints)
+    newPositions[np.abs(newPositions) < 1e-15] = 0  # Set small values to 0
+    newPositions = np.round((newPositions / newPositions[-1])[:2]).astype(int)
+
+    # Construct a mapping from transformed points to the original points.
+    mapping = {}
+    for i in range(imageHeight * imageWidth):
+        x, y = newPositions[:, i]
+        if 0 <= x and x < imageHeight and 0 <= y and y < imageWidth:
+            mapping[x, y] = (i // imageWidth, i % imageWidth)
+
+    # Convert the mapping into arrays of coordinates
+    newPoints, oldPoints = mapping.keys(), mapping.values()
+    newPoints, oldPoints = list(map(list, newPoints)), list(map(list, oldPoints))
+    return np.array(newPoints).T, np.array(oldPoints).T
+
+
+def transformImage(originalImage, oldPoints, newPoints):
+    """Transforms an image mapping its original points to new positions.
+
+    Fills in the new image with white pixels wherever there is no mapping.
+    The original image must be in BGR.
+
+    Args:
+        originalImage: The image to be transformed.
+        oldPoints: A numpy array with shape (2, numPoints). The first row
+            contains the x coordinates of the points to be mapped, while the
+            second row contains the y coordinates.
+        newPoints: A numpy array with shape (2, numPoints). The first row
+            contains the new x coordinates of the points being mapped, while the
+            second row contains the new y coordinates.
+
+    Returns:
+        The transformed image.
+    """
+    originalImage = cv2.cvtColor(originalImage, cv2.COLOR_BGR2GRAY)
+
+    newImage = np.full(originalImage.shape, fill_value=255, dtype=np.uint8)
+    newImage[newPoints[0], newPoints[1]] = originalImage[oldPoints[0], oldPoints[1]]
+
+    return newImage
 
 
 def drawRectangleOnImage(image, centre, width, height, color):
@@ -141,8 +157,6 @@ if __name__ == '__main__':
     ])
     homographyMatrix = computeHomography(originalPoints, finalPoints)
     newPoints, oldPoints = computeMapping(frameHeight, frameWidth, homographyMatrix)
-    newPoints, oldPoints = np.array(newPoints), np.array(oldPoints)
-    print(newPoints.shape, oldPoints.shape)
 
     # for point in originalPoints:
     #     drawRectangleOnImage(frame,
@@ -162,8 +176,8 @@ if __name__ == '__main__':
     # print(solution / solution[-1])
 
     for frame in video:
-        transformedFrame = applyHomography(frame, homographyMatrix, newPoints, oldPoints)
+        transformedFrame = transformImage(frame, oldPoints, newPoints)
         # transformedFrame[450:] = 255
         # transformedFrame[:,300:] = 255
         cv2.imshow('Frame', transformedFrame)
-        cv2.waitKey(300)
+        cv2.waitKey(50)
