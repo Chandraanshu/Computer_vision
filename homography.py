@@ -6,7 +6,7 @@ import cv2
 import time
 
 
-def applyHomography(originalImage, homographyMatrix, newPositions):
+def applyHomography(originalImage, homographyMatrix, newPoints, oldPoints):
     """Transforms the image according to a homography.
 
     Note that the resultant picture would likely not fit in the same area as the
@@ -20,38 +20,16 @@ def applyHomography(originalImage, homographyMatrix, newPositions):
         The transformed image.
     """
     start = time.time()
-    numRows = originalImage.shape[0]
-    numCols = originalImage.shape[1]
     originalImage = cv2.cvtColor(originalImage, cv2.COLOR_BGR2GRAY)
 
-    # Defaultdict(list) has a default value of []
-    # newMapping maps the transformed points to pixel values.
-    # One point can have multiple values due to rounding.
-    print('Done transforming')
-    # newMapping = collections.defaultdict(list)
-    newMapping = dict()
+    newImage = np.full(originalImage.shape, 255)
+    newImage[newPoints[0], newPoints[1]] = originalImage[oldPoints[0], oldPoints[1]]
 
-    # newImage = np.full(originalImage.shape, 255)
-
-    for i in range(numRows * numCols):
-        x, y = newPositions[:, i]
-        newMapping[x, y] = originalImage[i // numCols, i % numCols]
-
-    print('Done mapping')
-
-    newImage = np.empty(originalImage.shape)
-
-    for i in range(numRows):
-        for j in range(numCols):
-            # If no such mapping was specified, make the pixel white.
-            newImage[i, j] = newMapping.get((i, j), 255)
-
-    print('Done changing')
     print(time.time() - start)
     return newImage.astype(np.uint8)
 
 
-def computeNewPositions(imageHeight, imageWidth, homographyMatrix):
+def computeMapping(imageHeight, imageWidth, homographyMatrix):
     # Form array of point coordinates.
     imagePoints = []
     inner_range = range(imageWidth)
@@ -61,9 +39,20 @@ def computeNewPositions(imageHeight, imageWidth, homographyMatrix):
     imagePoints = np.array(imagePoints).transpose()
 
     # Compute positions of points after applying the homography matrix.
-    transformedImage = np.matmul(homographyMatrix, imagePoints)
-    transformedImage[np.abs(transformedImage) < 1e-15] = 0
-    return np.round((transformedImage / transformedImage[-1])[:2])
+    newPositions = np.matmul(homographyMatrix, imagePoints)
+    newPositions[np.abs(newPositions) < 1e-15] = 0
+    newPositions = np.round((newPositions / newPositions[-1])[:2]).astype(int)
+
+    mapping = {}
+
+    for i in range(imageHeight * imageWidth):
+        x, y = newPositions[:, i]
+        if 0 <= x and x < imageHeight and 0 <= y and y < imageWidth:
+            mapping[x, y] = (i // imageWidth, i % imageWidth)
+
+    newPoints, oldPoints = mapping.keys(), mapping.values()
+    newPoints, oldPoints = list(map(list, newPoints)), list(map(list, oldPoints))
+    return np.array(newPoints).T, np.array(oldPoints).T
 
 
 def computeHomography(originalPoints, finalPoints):
@@ -151,7 +140,9 @@ if __name__ == '__main__':
         [100, 600],
     ])
     homographyMatrix = computeHomography(originalPoints, finalPoints)
-    newPositions = computeNewPositions(frameHeight, frameWidth, homographyMatrix)
+    newPoints, oldPoints = computeMapping(frameHeight, frameWidth, homographyMatrix)
+    newPoints, oldPoints = np.array(newPoints), np.array(oldPoints)
+    print(newPoints.shape, oldPoints.shape)
 
     # for point in originalPoints:
     #     drawRectangleOnImage(frame,
@@ -171,7 +162,7 @@ if __name__ == '__main__':
     # print(solution / solution[-1])
 
     for frame in video:
-        transformedFrame = applyHomography(frame, homographyMatrix, newPositions)
+        transformedFrame = applyHomography(frame, homographyMatrix, newPoints, oldPoints)
         # transformedFrame[450:] = 255
         # transformedFrame[:,300:] = 255
         cv2.imshow('Frame', transformedFrame)
