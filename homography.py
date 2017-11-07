@@ -131,9 +131,9 @@ def drawRectangleOnImage(image, centre, width, height, color):
 
 
 if __name__ == '__main__':
-    video = video_io.readVideo('shadowTrim.mp4')[320:400]
+    video = video_io.readVideo('Shadow.mp4')
 
-    video = video[:, :, 500:-300]
+    # video = video[:, :, 500:-300]
 
     video[np.any(video > 40, axis=3)] = 255
     # video_io.displayVideo(video)
@@ -165,8 +165,8 @@ if __name__ == '__main__':
     #                          6,
     #                          (0, 0, 255))
 
-    #cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
-    #cv2.resizeWindow('Frame', 600,600)
+    # cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('Frame', 600,600)
     # cv2.imshow('Frame', frame)
     # cv2.waitKey(3000)
 
@@ -180,4 +180,4 @@ if __name__ == '__main__':
         # transformedFrame[450:] = 255
         # transformedFrame[:,300:] = 255
         cv2.imshow('Frame', transformedFrame)
-        cv2.waitKey(50)
+        cv2.waitKey(1)
