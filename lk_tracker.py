@@ -208,22 +208,6 @@ def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
     return newCoords // 2
 
 
-def drawRectangleOnImage(image, centre, width, height, color):
-    """Draws a rectangle on the given image.
-
-    Args:
-        image: The image on which the rectangle is to be drawn.
-        centre: The coordinates of the centre of the rectangle.
-        width: The width of the rectangle.
-        height: The height of the rectangle.
-        color: The color of the rectangle.
-    """
-    cv2.rectangle(image,
-                  (centre[0] - width // 2, centre[1] - height // 2),
-                  (centre[0] + width // 2, centre[1] + height // 2),
-                  color=color)
-
-
 if __name__ == '__main__':
     video = video_io.readVideo('Remote.mp4')
     video = np.transpose(video, (0, 2, 1, 3))
@@ -241,11 +225,11 @@ if __name__ == '__main__':
     for frameIdx in range(min(NUM_FRAMES_TO_TRACK, len(video) - 1)):
         newFrame = cv2.cvtColor(cv2.cvtColor(video[frameIdx].copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
         newFrame = cv2.flip(newFrame, 1)
-        drawRectangleOnImage(newFrame,
-                             pixelPositions[-1][: : -1],
-                             TRACK_WINDOW_SIZE,
-                             TRACK_WINDOW_SIZE,
-                             (0, 0, 255))
+        utils.drawRectangleOnImage(newFrame,
+                                   pixelPositions[-1][: : -1],
+                                   TRACK_WINDOW_SIZE,
+                                   TRACK_WINDOW_SIZE,
+                                   (0, 0, 255))
         cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('Frame', 600, 400)
         cv2.imshow('Frame', newFrame)
@@ -264,9 +248,9 @@ if __name__ == '__main__':
             print(frameIdx)
 
     for i, pixelPosition in enumerate(pixelPositions):
-        drawRectangleOnImage(video[i],
-                             pixelPosition[: : -1],
-                             TRACK_WINDOW_SIZE,
-                             TRACK_WINDOW_SIZE,
-                             (0, 0, 255))
+        utils.drawRectangleOnImage(video[i],
+                                   pixelPosition[: : -1],
+                                   TRACK_WINDOW_SIZE,
+                                   TRACK_WINDOW_SIZE,
+                                   (0, 0, 255))
     video_io.displayVideo(video, FPS=5)

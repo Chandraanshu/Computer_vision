@@ -4,6 +4,7 @@ import video_io
 import collections
 import cv2
 import time
+import utils
 
 
 def computeHomography(originalPoints, finalPoints):
@@ -106,28 +107,12 @@ def transformImage(originalImage, oldPoints, newPoints):
     Returns:
         The transformed image.
     """
-    originalImage = cv2.cvtColor(originalImage, cv2.COLOR_BGR2GRAY)
+    # originalImage = cv2.cvtColor(originalImage, cv2.COLOR_BGR2GRAY)
 
     newImage = np.full(originalImage.shape, fill_value=255, dtype=np.uint8)
     newImage[newPoints[0], newPoints[1]] = originalImage[oldPoints[0], oldPoints[1]]
 
     return newImage
-
-
-def drawRectangleOnImage(image, centre, width, height, color):
-    """Draws a rectangle on the given image.
-
-    Args:
-        image: The image on which the rectangle is to be drawn.
-        centre: The coordinates of the centre of the rectangle.
-        width: The width of the rectangle.
-        height: The height of the rectangle.
-        color: The color of the rectangle.
-    """
-    cv2.rectangle(image,
-                  (centre[0] - width // 2, centre[1] - height // 2),
-                  (centre[0] + width // 2, centre[1] + height // 2),
-                  color=color)
 
 
 if __name__ == '__main__':
@@ -159,7 +144,7 @@ if __name__ == '__main__':
     newPoints, oldPoints = computeMapping(frameHeight, frameWidth, homographyMatrix)
 
     # for point in originalPoints:
-    #     drawRectangleOnImage(frame,
+    #     utils.drawRectangleOnImage(frame,
     #                          list(point)[::-1],
     #                          6,
     #                          6,
