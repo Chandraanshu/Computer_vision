@@ -25,7 +25,7 @@ def removeBackground(frame, background):
     badMask = np.all(abs(frame - background) < GOOD_THRESHOLD, axis=2)
     # Replace good pixels with original in frame.
     frame[badMask] = 255
-    return frame
+    return frame.astype(np.uint8)
 
 
 def getVideoAverage(video):
