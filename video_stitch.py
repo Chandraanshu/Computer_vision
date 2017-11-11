@@ -28,7 +28,7 @@ if __name__ == '__main__':
     #
     # # diff = video - video[5]
     # # background = cv2.cvtColor(video[5].copy(), cv2.COLOR_BGR2GRAY)
-    # background = video[constants.PERSON_BACKGROUND_FRAME].copy()
+
     #
     # for i, frame in enumerate(video):
     #     backgroundRemoved = background_remove.removeBackground(frame, background)
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     person_video = video_io.readVideo(constants.PERSON_VIDEO).astype(np.float32)
     print ('person done')
     background = cv2.cvtColor(shadow_video[constants.SHADOW_BACKGROUND_FRAME].copy(), cv2.COLOR_BGR2GRAY)
+    backgroundPerson = person_video[constants.PERSON_BACKGROUND_FRAME].copy()
 
     # mask = np.logical_or(video[:, :, :, 1] >= 80, video[:, :, :, 0] >= 80)
     # mask = np.logical_or(video[:, :, :, 2] < 120, mask)
@@ -90,16 +91,19 @@ if __name__ == '__main__':
     for shadow_frame, person_frame in zip(shadow_video, person_video):
         # Work with shadow in grayscale.
         shadow_frame = cv2.cvtColor(shadow_frame, cv2.COLOR_BGR2GRAY)
-        backgroundRemoved = background_remove.removeBackground(shadow_frame, background)
+        backgroundRemoved = background_remove.removeBackgroundGray(shadow_frame, background)
 
-        person_frame = np.flip(person_frame, 1).astype(np.uint8)
-        person_frame = cv2.cvtColor(person_frame, cv2.COLOR_BGR2GRAY)
+        person_frame = np.flip(person_frame, 1)
+        # person_frame = cv2.cvtColor(person_frame, cv2.COLOR_BGR2GRAY)
+        backgroundRemovedPerson = background_remove.removeBackground(person_frame, backgroundPerson)
+        artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
+
         # Threshold out whiter portions.
         backgroundRemoved[backgroundRemoved > constants.SHADOW_THRESHOLD] = 255
         transformedFrame = homography.transformImage(backgroundRemoved, originalPointsCoords, finalPointsCoords)
 
         # Crop out unneeded portions of image.
-        transformedFrame = utils.cropImage(transformedFrame, 150, 230, 50, 300)
+        transformedFrame = utils.cropImage(transformedFrame, 130, 230, 50, 300)
 
         # Expand shadow to become normal sized.
         transformedFrame = utils.imageExpand(transformedFrame, constants.LAPLACIAN_BLUR_WINDOW_SIZE).astype(np.uint8)
@@ -107,12 +111,14 @@ if __name__ == '__main__':
         # Find shadow and crop out person
         shadowPosition = shadow.findShadowPosition(transformedFrame, constants.SHADOW_SIZE)
         transformedFrame = utils.cropImage(transformedFrame, 0, 0, 0, transformedFrame.shape[1] - shadowPosition[1] - constants.SHADOW_SIZE[1] - 100)
+        transformedFrame = utils.cropImage(transformedFrame, 2, 2, 2, 2)
 
         #utils.drawTopLeftRectangleOnImage(transformedFrame, shadowPosition[::-1], constants.SHADOW_SIZE[1], constants.SHADOW_SIZE[0], (0, 0, 255))
+        shadow_mask = transformedFrame < 250
 
-        shadow_mask = transformedFrame[transformedFrame != 255]
+        transformedFrame = cv2.cvtColor(transformedFrame, cv2.COLOR_GRAY2BGR)
 
-        person_frame[shadow_mask] = transformedFrame[shadow_mask]
+        artificialShadowAdded[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadow_mask] = transformedFrame[shadow_mask]
 
-        cv2.imshow('Frame', cv2.cvtColor(person_frame, cv2.COLOR_GRAY2BGR))
+        cv2.imshow('Frame', artificialShadowAdded)
         cv2.waitKey(1)

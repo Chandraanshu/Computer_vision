@@ -4,7 +4,7 @@ import video_io
 import constants
 
 
-def removeBackground(frame, background):
+def removeBackgroundGray(frame, background):
     """Removes static background from a frame.
 
     Args:
@@ -22,6 +22,13 @@ def removeBackground(frame, background):
     # turns -2 into 254.
     # Get mask for all pixels which have a large positive difference.
     badMask = np.abs(frame - background) < constants.BACKGROUND_GOOD_THRESHOLD
+    # Replace good pixels with original in frame.
+    frame[badMask] = 255
+    return frame.astype(np.uint8)
+
+
+def removeBackground(frame, background):
+    badMask = np.all(abs(frame - background) < constants.BACKGROUND_GOOD_THRESHOLD, axis=2)
     # Replace good pixels with original in frame.
     frame[badMask] = 255
     return frame.astype(np.uint8)
