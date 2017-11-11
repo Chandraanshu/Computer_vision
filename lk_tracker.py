@@ -4,13 +4,7 @@ from scipy import signal
 import math
 import video_io
 import utils
-
-
-TRACK_WINDOW_SIZE = 31  # Must be an odd number
-BLUR_WINDOW_SIZE = 17
-PYRAMID_DEPTH = 3
-PIXEL_TO_TRACK = np.array([109, 300])
-NUM_FRAMES_TO_TRACK = 200
+import constants
 
 
 def generateShrinkPyramid(image, depth):
@@ -26,7 +20,7 @@ def generateShrinkPyramid(image, depth):
         List of images, represented as numpy arrays.
     """
     shrunkImages = [image]
-    window = BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
+    window = constants.BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
     for i in range(depth - 1):
         shrunkImages.append(utils.imageShrink(shrunkImages[-1], window))
         # Gauss window size needs to reduce as the image gets smaller,
@@ -187,15 +181,15 @@ if __name__ == '__main__':
     #     cv2.waitKey(33)
 
     # Convert from image coordinates to matrix coordinates.
-    pixelToTrack = PIXEL_TO_TRACK[: : -1]
+    pixelToTrack = constants.PIXEL_TO_TRACK[: : -1]
     pixelPositions = [pixelToTrack]
-    for frameIdx in range(min(NUM_FRAMES_TO_TRACK, len(video) - 1)):
+    for frameIdx in range(min(constants.NUM_FRAMES_TO_TRACK, len(video) - 1)):
         newFrame = cv2.cvtColor(cv2.cvtColor(video[frameIdx].copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
         newFrame = cv2.flip(newFrame, 1)
         utils.drawRectangleOnImage(newFrame,
                                    pixelPositions[-1][: : -1],
-                                   TRACK_WINDOW_SIZE,
-                                   TRACK_WINDOW_SIZE,
+                                   constants.TRACK_WINDOW_SIZE,
+                                   constants.TRACK_WINDOW_SIZE,
                                    (0, 0, 255))
         cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('Frame', 600, 400)
@@ -208,8 +202,8 @@ if __name__ == '__main__':
         pixelToTrack = LKTrackerFrameToFrame(oldFrame,
                                              newFrame,
                                              pixelToTrack,
-                                             TRACK_WINDOW_SIZE,
-                                             PYRAMID_DEPTH)
+                                             constants.TRACK_WINDOW_SIZE,
+                                             constants.PYRAMID_DEPTH)
         pixelPositions.append(pixelToTrack)
         if frameIdx % 10 == 0:
             print(frameIdx)
@@ -217,7 +211,7 @@ if __name__ == '__main__':
     for i, pixelPosition in enumerate(pixelPositions):
         utils.drawRectangleOnImage(video[i],
                                    pixelPosition[: : -1],
-                                   TRACK_WINDOW_SIZE,
-                                   TRACK_WINDOW_SIZE,
+                                   constants.TRACK_WINDOW_SIZE,
+                                   constants.TRACK_WINDOW_SIZE,
                                    (0, 0, 255))
     video_io.displayVideo(video, FPS=5)

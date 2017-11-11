@@ -7,6 +7,8 @@ def addArtificalShadow(frame, shadowOffset, shadowColor):
     Every pixel except for those that are part of the person must be completely
     white.
     The shadow is placed 'behind' the person.
+    The shadow is created by simply shifting the person by the offset and
+    colouring all the pixels a dark colour.
 
     Args:
         frame: A numpy array containing the frame.

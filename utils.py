@@ -2,6 +2,7 @@ import numpy as np
 import math
 import cv2
 from scipy import signal
+import constants
 
 
 def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
@@ -47,7 +48,7 @@ def drawRectangleOnImage(image, centre, width, height, color):
 
 
 def imageExpand(image, size):
-    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
+    gkern = np.outer(signal.gaussian(size, constants.GAUSS_STDDEV), signal.gaussian(size, constants.GAUSS_STDDEV))
     gkern = gkern / gkern.sum()
 
     # Expand each pixel into 4 pixels.
@@ -65,7 +66,7 @@ def imageShrink(image, size):
     Returns:
         Shrunk image as an np array.
     """
-    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
+    gkern = np.outer(signal.gaussian(size, constants.GAUSS_STDDEV), signal.gaussian(size, constants.GAUSS_STDDEV))
     gkern = gkern / np.sum(gkern)  # Normalize sum of kernel to be 1.
     return signal.fftconvolve(image, gkern, 'same').astype(np.uint8)[ : : 2, : : 2]
 
