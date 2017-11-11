@@ -13,25 +13,6 @@ PIXEL_TO_TRACK = np.array([109, 300])
 NUM_FRAMES_TO_TRACK = 200
 
 
-def imageShrink(image, size):
-    """Reduces the size of an image by half using a Gaussian filter.
-
-    Args:
-        image: Numpy array containing the image to be shrunk.
-        size: Size of the Gaussian filter to use.
-
-    Returns:
-        Shrunk image as an np array.
-    """
-    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
-    total = np.sum(gkern)
-    gkern = gkern / total  # Normalize sum of kernel to be 1.
-    # b = signal.fftconvolve(image[ : , : , 0], gkern, 'same')
-    # g = signal.fftconvolve(image[ : , : , 1], gkern, 'same')
-    return signal.fftconvolve(image, gkern, 'same').astype(np.uint8)[ : : 2, : : 2]
-    # return np.dstack([b,g,r]).astype(np.uint8)
-
-
 def generateShrinkPyramid(image, depth):
     """Generates an image pyramid, composed of progressively smaller images.
 
@@ -47,7 +28,7 @@ def generateShrinkPyramid(image, depth):
     shrunkImages = [image]
     window = BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
     for i in range(depth - 1):
-        shrunkImages.append(imageShrink(shrunkImages[-1], window))
+        shrunkImages.append(utils.imageShrink(shrunkImages[-1], window))
         # Gauss window size needs to reduce as the image gets smaller,
         # else the blurring is excessive.
         window = window // 2
@@ -55,20 +36,6 @@ def generateShrinkPyramid(image, depth):
             window += 1
 
     return shrunkImages
-
-
-def imageExpand(image, size):
-    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
-    total = gkern.sum()
-    gkern = gkern / total
-    expand = np.zeros((image.shape[0]*2, image.shape[1]*2, 3), dtype=np.float64)
-    expand[::2,::2] = image[:,:,:]
-    b = signal.fftconvolve(expand[:,:,0], gkern, 'same')
-    g = signal.fftconvolve(expand[:,:,1], gkern, 'same')
-    r = signal.fftconvolve(expand[:,:,2], gkern, 'same')
-    expand = np.dstack([b,g,r])
-    expand = expand.astype(np.uint8)
-    return expand
 
 
 def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,

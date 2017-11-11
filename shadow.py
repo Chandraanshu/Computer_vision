@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def getShadowPosition(frame, trackingBoxSize):
+def findShadowPosition(frame, trackingBoxSize):
     """Gets the position of a shadow in a frame.
 
     Frame must be in grayscale.

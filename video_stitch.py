@@ -74,6 +74,9 @@ if __name__ == '__main__':
     homographyMatrix = homography.computeHomography(originalPoints, finalPoints)
     finalPointsCoords, originalPointsCoords = homography.computeMapping(frameHeight, frameWidth, homographyMatrix)
 
+    # cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('Frame', 600,600)
+
     for frame in video:
         # Work with shadow in grayscale.
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -83,9 +86,17 @@ if __name__ == '__main__':
         backgroundRemoved[backgroundRemoved > 120] = 255
         transformedFrame = homography.transformImage(backgroundRemoved, originalPointsCoords, finalPointsCoords)
 
-        trackingBoxSize = [200, 40]
-        shadowIndices = shadow.getShadowPosition(transformedFrame, trackingBoxSize)
+        # Crop out unneeded portions of image.
+        transformedFrame = utils.cropImage(transformedFrame, 150, 230, 50, 300)
 
-        utils.drawTopLeftRectangleOnImage(transformedFrame, shadowIndices[::-1], trackingBoxSize[1], trackingBoxSize[0], (0, 0, 255))
+        # Expand shadow to become normal sized.
+        transformedFrame = utils.imageExpand(transformedFrame, 4).astype(np.uint8)
+
+        # Find shadow and crop out person
+        trackingBoxSize = [400, 80]
+        shadowPosition = shadow.findShadowPosition(transformedFrame, trackingBoxSize)
+        transformedFrame = utils.cropImage(transformedFrame, 0, 0, 0, transformedFrame.shape[1] - shadowPosition[1] - trackingBoxSize[1] - 100)
+
+        utils.drawTopLeftRectangleOnImage(transformedFrame, shadowPosition[::-1], trackingBoxSize[1], trackingBoxSize[0], (0, 0, 255))
         cv2.imshow('Frame', transformedFrame)
         cv2.waitKey(1)

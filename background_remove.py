@@ -22,7 +22,7 @@ def removeBackground(frame, background):
     # Note: Negative values need to be set to 0 because converting to uint8
     # turns -2 into 254.
     # Get mask for all pixels which have a large positive difference.
-    badMask = abs(frame - background) < GOOD_THRESHOLD
+    badMask = np.abs(frame - background) < GOOD_THRESHOLD
     # Replace good pixels with original in frame.
     frame[badMask] = 255
     return frame.astype(np.uint8)

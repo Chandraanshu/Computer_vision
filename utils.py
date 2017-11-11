@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import cv2
+from scipy import signal
 
 
 def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
@@ -43,6 +44,34 @@ def drawRectangleOnImage(image, centre, width, height, color):
                   (centre[0] - width // 2, centre[1] - height // 2),
                   (centre[0] + width // 2, centre[1] + height // 2),
                   color=color)
+
+
+def imageExpand(image, size):
+    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
+    gkern = gkern / gkern.sum()
+
+    # Expand each pixel into 4 pixels.
+    expanded = np.repeat(np.repeat(image, 2, axis=1), 2, axis=0)
+    return signal.fftconvolve(expanded, gkern, 'same').astype(np.uint8)
+
+
+def imageShrink(image, size):
+    """Reduces the size of an image by half using a Gaussian filter.
+
+    Args:
+        image: Numpy array containing the image to be shrunk.
+        size: Size of the Gaussian filter to use.
+
+    Returns:
+        Shrunk image as an np array.
+    """
+    gkern = np.outer(signal.gaussian(size, 2.5), signal.gaussian(size, 2.5))
+    gkern = gkern / np.sum(gkern)  # Normalize sum of kernel to be 1.
+    return signal.fftconvolve(image, gkern, 'same').astype(np.uint8)[ : : 2, : : 2]
+
+
+def cropImage(image, topMargin, bottomMargin, leftMargin, rightMargin):
+    return image[topMargin : image.shape[0] - bottomMargin, leftMargin : image.shape[0] - rightMargin]
 
 
 def drawTopLeftRectangleOnImage(image, topLeft, width, height, color):
