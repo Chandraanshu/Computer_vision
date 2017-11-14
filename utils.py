@@ -72,7 +72,7 @@ def imageShrink(image, size):
 
 
 def cropImage(image, topMargin, bottomMargin, leftMargin, rightMargin):
-    return image[topMargin : image.shape[0] - bottomMargin, leftMargin : image.shape[0] - rightMargin]
+    return image[topMargin : image.shape[0] - bottomMargin, leftMargin : image.shape[1] - rightMargin]
 
 
 def drawTopLeftRectangleOnImage(image, topLeft, width, height, color):

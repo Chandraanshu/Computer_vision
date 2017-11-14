@@ -24,7 +24,7 @@ def openVideo(fileName):
     return cap
 
 
-def getAllFrames(cap):
+def getAllFrames(cap, numFrames):
     """Reads all frames from a cv2.VideoCapture object.
 
     Args:
@@ -35,19 +35,23 @@ def getAllFrames(cap):
         containing all frames in the video.
     """
     video = []
+    num = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
 
         if not ret:
-          break
+            break
 
         video.append(frame)
+        num += 1
+        if num == numFrames:
+            break
 
     return np.array(video)
 
 
-def readVideo(fileName):
+def readVideo(fileName, numFrames=0):
     """Reads video from file and returns all frames contained in it.
 
     Args:
@@ -58,7 +62,7 @@ def readVideo(fileName):
         containing all frames in the video.
     """
     cap = openVideo(fileName)
-    video = getAllFrames(cap)
+    video = getAllFrames(cap, numFrames)
     cap.release()
 
     return video
