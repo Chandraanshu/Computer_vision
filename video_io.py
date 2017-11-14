@@ -72,6 +72,7 @@ def shutdown():
     for cap in CAP.values():
         cap.release()
     # return video
+    WRITER.release()
 
 
 def displayVideo(frames, FPS=30):
@@ -94,7 +95,9 @@ def displayVideo(frames, FPS=30):
     cv2.destroyAllWindows()
 
 
-def writeVideo(video, fileName, FPS=30):
+WRITER = None
+
+def writeVideo(frame, fileName, FPS=30):
     """Given a video, write it to a file.
 
     Deletes the specified file, if already present.
@@ -110,19 +113,19 @@ def writeVideo(video, fileName, FPS=30):
     except FileNotFoundError:
         pass
 
-    outWriter = cv2.VideoWriter(
+    global WRITER
+    WRITER = cv2.VideoWriter(
         fileName,
         apiPreference=cv2.CAP_ANY,
         fourcc=cv2.VideoWriter_fourcc(*'MJPG'),
         fps=FPS,
-        frameSize=tuple(reversed(video.shape[1 : 3]))
+        frameSize=tuple(reversed(frame.shape[0 : 2]))
     )
 
-    for frame in video:
-        outWriter.write(frame)
-        time.sleep(0.01)  # Needs some time to write the frame
 
-    outWriter.release()
+def write(frame):
+    WRITER.write(frame)
+    # time.sleep(0.01)  # Needs some time to write the frame
 
 
 if __name__ == '__main__':

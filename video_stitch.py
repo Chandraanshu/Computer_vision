@@ -8,6 +8,8 @@ import utils
 import shadow
 import constants
 
+PERSON_MOVE = 115
+
 
 def visualizePoints(frame, points):
     for point in points:
@@ -40,10 +42,8 @@ if __name__ == '__main__':
     #         break
 
     shadow_video = video_io.readVideo(constants.SHADOW_VIDEO)
-    print("Shadow done")
     person_video = video_io.readVideo(constants.PERSON_VIDEO)
     # background = shadow_video[constants.SHADOW_BACKGROUND_FRAME].copy()
-    print("done reading")
 
     # mask = np.logical_or(video[:, :, :, 1] >= 80, video[:, :, :, 0] >= 80)
     # mask = np.logical_or(video[:, :, :, 2] < 120, mask)
@@ -66,10 +66,10 @@ if __name__ == '__main__':
     frameHeight, frameWidth = frame.shape[0], frame.shape[1]
 
     originalPoints = np.array([
-        [320, 800],
-        [frameHeight - 380, 800],
-        [frameHeight - 370, frameWidth - 550],
-        [480, frameWidth - 550],
+        [210, 850],
+        [frameHeight - 460, 850],
+        [frameHeight - 470, frameWidth - 460],
+        [380, frameWidth - 470],
     ])
     finalPoints = np.array([
         [250, 100],
@@ -79,12 +79,13 @@ if __name__ == '__main__':
     ])
 
     # Uncomment when figuring out points for homography.
-    visualizePoints(shadow_video[5], originalPoints)
+    # visualizePoints(frame, originalPoints)
 
     homographyMatrix = homography.computeHomography(originalPoints, finalPoints)
     finalPointsCoords, originalPointsCoords = homography.computeMapping(frameHeight, frameWidth, homographyMatrix)
     # print ('homo done')
     personFrameNumber = 0
+    first = True
 
     for personFrame in person_video:
         if personFrameNumber == constants.PERSON_BACKGROUND_FRAME:
@@ -97,13 +98,24 @@ if __name__ == '__main__':
         elif personFrameNumber >= constants.ARTIFICAL_SHADOW_BREAK_FRAME:
             break
 
-
         # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
         artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
-        artificialShadowAdded = utils.cropImage(artificialShadowAdded, 0, 150, constants.ARTIFICIAL_SHADOW_OFFSET[1], 0)
+        # artificialShadowAdded = utils.cropImage(artificialShadowAdded, 0, 150, constants.ARTIFICIAL_SHADOW_OFFSET[1], 0)
 
-        cv2.imshow('Frame', artificialShadowAdded)
+        personMask = np.any(artificialShadowAdded[:, PERSON_MOVE:] != 255, axis=2)
+        finalFrame = np.full(artificialShadowAdded.shape, fill_value=255, dtype=np.uint8)
+        finalFrame[:, :-PERSON_MOVE][personMask] = artificialShadowAdded[:, PERSON_MOVE:][personMask]
+
+        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, PERSON_MOVE)
+
+        if first:
+            video_io.writeVideo(finalFrame, 'final1.mp4')
+            first = False
+
+        video_io.write(finalFrame)
+
+        cv2.imshow('Frame', finalFrame)
         cv2.waitKey(1)
 
     shadowFrameNumber = 0
@@ -138,9 +150,9 @@ if __name__ == '__main__':
         shadowPosition = shadow.findShadowPosition(transformedFrame, constants.SHADOW_SIZE)
         transformedFrame = utils.cropImage(transformedFrame, 0, 0, 0, 200)
         transformedFrame = utils.cropImage(transformedFrame, 2, 2, 2, 2)
-        transformedFrame[:, shadowPosition[1] + constants.SHADOW_SIZE[1] + 100 : ] = 255
+        transformedFrame[:, shadowPosition[1] + constants.SHADOW_SIZE[1] + 130 : ] = 255
 
-        utils.drawTopLeftRectangleOnImage(transformedFrame, shadowPosition[::-1], constants.SHADOW_SIZE[1], constants.SHADOW_SIZE[0], (0, 0, 255))
+        # utils.drawTopLeftRectangleOnImage(transformedFrame, shadowPosition[::-1], constants.SHADOW_SIZE[1], constants.SHADOW_SIZE[0], (0, 0, 255))
         transformedFrame = np.flip(transformedFrame, 1)
 
         shadowMask = transformedFrame < 250
@@ -152,11 +164,15 @@ if __name__ == '__main__':
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
         # print(backgroundRemovedPerson.shape)
         # backgroundRemovedPerson[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
-        personMask = np.any(backgroundRemovedPerson != 255, axis=2)
+        personMask = np.any(backgroundRemovedPerson[:, PERSON_MOVE:] != 255, axis=2)
 
         finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
-        finalFrame[70:70+transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
-        finalFrame[personMask] = backgroundRemovedPerson[personMask]
+        finalFrame[70 : 70 + transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
+        finalFrame[:, :-PERSON_MOVE][personMask] = backgroundRemovedPerson[:, PERSON_MOVE:][personMask]
+
+        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, PERSON_MOVE)
+
+        video_io.write(finalFrame)
 
         cv2.imshow('Frame', finalFrame)
         cv2.waitKey(1)
