@@ -48,7 +48,11 @@ def getAllFrames(cap, numFrames):
         if num == numFrames:
             break
 
-    return np.array(video)
+        yield frame.astype(np.float32)
+
+    # return np.array(video)
+
+CAP = {}
 
 
 def readVideo(fileName, numFrames=0):
@@ -61,11 +65,13 @@ def readVideo(fileName, numFrames=0):
         Numpy array with shape (numFrames, frameHeight, frameWidth, 3)
         containing all frames in the video.
     """
-    cap = openVideo(fileName)
-    video = getAllFrames(cap, numFrames)
-    cap.release()
+    CAP[fileName] = openVideo(fileName)
+    return getAllFrames(CAP[fileName], numFrames)
 
-    return video
+def shutdown():
+    for cap in CAP.values():
+        cap.release()
+    # return video
 
 
 def displayVideo(frames, FPS=30):

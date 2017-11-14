@@ -39,13 +39,10 @@ if __name__ == '__main__':
     #     if cv2.waitKey(20) & 0xFF == ord('q'):
     #         break
 
-    shadow_video = video_io.readVideo(constants.SHADOW_VIDEO, 400).astype(np.float32)
+    shadow_video = video_io.readVideo(constants.SHADOW_VIDEO)
     print("Shadow done")
-    person_video = video_io.readVideo(constants.PERSON_VIDEO, 400).astype(np.float32)
-    background = cv2.cvtColor(shadow_video[constants.SHADOW_BACKGROUND_FRAME].copy().astype(np.uint8), cv2.COLOR_BGR2GRAY)
+    person_video = video_io.readVideo(constants.PERSON_VIDEO)
     # background = shadow_video[constants.SHADOW_BACKGROUND_FRAME].copy()
-    backgroundPerson = person_video[constants.PERSON_BACKGROUND_FRAME].copy()
-    backgroundPerson = np.flip(backgroundPerson, 0)
     print("done reading")
 
     # mask = np.logical_or(video[:, :, :, 1] >= 80, video[:, :, :, 0] >= 80)
@@ -64,13 +61,15 @@ if __name__ == '__main__':
 
     # video_io.displayVideo(video)
 
-    frameHeight, frameWidth = shadow_video.shape[1], shadow_video.shape[2]
+    frame = next(shadow_video)
+
+    frameHeight, frameWidth = frame.shape[0], frame.shape[1]
 
     originalPoints = np.array([
-        [260, 620],
-        [frameHeight - 440, 620],
-        [frameHeight - 470, frameWidth - 740],
-        [400, frameWidth - 740],
+        [320, 800],
+        [frameHeight - 380, 800],
+        [frameHeight - 370, frameWidth - 550],
+        [480, frameWidth - 550],
     ])
     finalPoints = np.array([
         [250, 100],
@@ -80,21 +79,48 @@ if __name__ == '__main__':
     ])
 
     # Uncomment when figuring out points for homography.
-    # visualizePoints(shadow_video[5], originalPoints)
+    visualizePoints(shadow_video[5], originalPoints)
 
     homographyMatrix = homography.computeHomography(originalPoints, finalPoints)
     finalPointsCoords, originalPointsCoords = homography.computeMapping(frameHeight, frameWidth, homographyMatrix)
     # print ('homo done')
+    personFrameNumber = 0
 
-    for person_frame in person_video[constants.PERSON_START_FRAME : constants.ARTIFICAL_SHADOW_BREAK_FRAME]:
+    for personFrame in person_video:
+        if personFrameNumber == constants.PERSON_BACKGROUND_FRAME:
+            backgroundPerson = personFrame.copy()
+
+        personFrameNumber += 1
+
+        if personFrameNumber < constants.PERSON_START_FRAME:
+            continue
+        elif personFrameNumber >= constants.ARTIFICAL_SHADOW_BREAK_FRAME:
+            break
 
 
+        # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
+        backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
+        artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
+        artificialShadowAdded = utils.cropImage(artificialShadowAdded, 0, 150, constants.ARTIFICIAL_SHADOW_OFFSET[1], 0)
 
-    for shadow_frame, person_frame in zip(shadow_video, person_video):
+        cv2.imshow('Frame', artificialShadowAdded)
+        cv2.waitKey(1)
+
+    shadowFrameNumber = 0
+
+    for shadowFrame in shadow_video:
+        if shadowFrameNumber == constants.SHADOW_BACKGROUND_FRAME:
+            background = cv2.cvtColor(shadowFrame.copy().astype(np.uint8), cv2.COLOR_BGR2GRAY)
+
+        if shadowFrameNumber >= constants.SHADOW_START_FRAME:
+            break
+        shadowFrameNumber += 1
+
+    for shadowFrame, personFrame in zip(shadow_video, person_video):
         # Work with shadow in grayscale.
-        shadow_frame = cv2.cvtColor(shadow_frame, cv2.COLOR_BGR2GRAY).astype(np.float32)
-        backgroundRemoved = background_remove.removeBackgroundGray(shadow_frame, background)
-        # backgroundRemoved = background_remove.removeBackground(shadow_frame, background)
+        shadowFrame = cv2.cvtColor(shadowFrame, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        backgroundRemoved = background_remove.removeBackgroundGray(shadowFrame, background)
+        # backgroundRemoved = background_remove.removeBackground(shadowFrame, background)
 
         # Threshold out whiter portions.
         backgroundRemoved[backgroundRemoved > constants.SHADOW_THRESHOLD] = 255
@@ -117,18 +143,22 @@ if __name__ == '__main__':
         utils.drawTopLeftRectangleOnImage(transformedFrame, shadowPosition[::-1], constants.SHADOW_SIZE[1], constants.SHADOW_SIZE[0], (0, 0, 255))
         transformedFrame = np.flip(transformedFrame, 1)
 
-        shadow_mask = transformedFrame < 250
+        shadowMask = transformedFrame < 250
 
         transformedFrame = cv2.cvtColor(transformedFrame, cv2.COLOR_GRAY2BGR)
 
-        person_frame = np.flip(person_frame, 0)
-        # person_frame = cv2.cvtColor(person_frame, cv2.COLOR_BGR2GRAY)
-        backgroundRemovedPerson = background_remove.removeBackground(person_frame, backgroundPerson)
+        # personFrame = np.flip(personFrame, 0)
+        # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
+        backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
         # print(backgroundRemovedPerson.shape)
-        artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
-        artificialShadowAdded = utils.cropImage(artificialShadowAdded, 0, 150, constants.ARTIFICIAL_SHADOW_OFFSET[1], 0)
+        # backgroundRemovedPerson[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
+        personMask = np.any(backgroundRemovedPerson != 255, axis=2)
 
-        artificialShadowAdded[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadow_mask] = transformedFrame[shadow_mask]
+        finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
+        finalFrame[70:70+transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
+        finalFrame[personMask] = backgroundRemovedPerson[personMask]
 
-        cv2.imshow('Frame', artificialShadowAdded)
+        cv2.imshow('Frame', finalFrame)
         cv2.waitKey(1)
+
+    video_io.shutdown()
