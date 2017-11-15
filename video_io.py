@@ -43,7 +43,6 @@ def getAllFrames(cap, numFrames):
         if not ret:
             break
 
-        video.append(frame)
         num += 1
         if num == numFrames:
             break
