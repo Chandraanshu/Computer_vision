@@ -39,9 +39,10 @@ if __name__ == '__main__':
     #     if cv2.waitKey(20) & 0xFF == ord('q'):
     #         break
 
-    shadow_video = video_io.readVideo(constants.SHADOW_VIDEO)
-    person_video = video_io.readVideo(constants.PERSON_VIDEO)
-    # background = shadow_video[constants.SHADOW_BACKGROUND_FRAME].copy()
+    shadowVideo = video_io.readVideo(constants.SHADOW_VIDEO)
+    personVideo = video_io.readVideo(constants.PERSON_VIDEO)
+    backgroundImage = cv2.imread('wall.jpg')
+    # background = shadowVideo[constants.SHADOW_BACKGROUND_FRAME].copy()
 
     # mask = np.logical_or(video[:, :, :, 1] >= 80, video[:, :, :, 0] >= 80)
     # mask = np.logical_or(video[:, :, :, 2] < 120, mask)
@@ -59,7 +60,7 @@ if __name__ == '__main__':
 
     # video_io.displayVideo(video)
 
-    frame = next(shadow_video)
+    frame = next(shadowVideo)
 
     frameHeight, frameWidth = frame.shape[0], frame.shape[1]
 
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     personFrameNumber = 0
     first = True
 
-    for personFrame in person_video:
+    for personFrame in personVideo:
         if personFrameNumber == constants.PERSON_BACKGROUND_FRAME:
             backgroundPerson = personFrame.copy()
 
@@ -98,12 +99,19 @@ if __name__ == '__main__':
 
         # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
-        artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
+        # artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
         # artificialShadowAdded = utils.cropImage(artificialShadowAdded, 0, 150, constants.ARTIFICIAL_SHADOW_OFFSET[1], 0)
 
-        personMask = np.any(artificialShadowAdded[:, constants.PERSON_MOVE:] != 255, axis=2)
-        finalFrame = np.full(artificialShadowAdded.shape, fill_value=255, dtype=np.uint8)
-        finalFrame[:, :-constants.PERSON_MOVE][personMask] = artificialShadowAdded[:, constants.PERSON_MOVE:][personMask]
+        personPixels = np.any(backgroundRemovedPerson != 255, axis=2)
+        personPixelsCropped = personPixels[: backgroundRemovedPerson.shape[0] - constants.ARTIFICIAL_SHADOW_OFFSET[0], : backgroundRemovedPerson.shape[1] - constants.ARTIFICIAL_SHADOW_OFFSET[1]]
+
+        personMask = np.any(backgroundRemovedPerson[:, constants.PERSON_MOVE:] != 255, axis=2)
+        finalFrame = backgroundImage.copy()[:backgroundRemovedPerson.shape[0], :backgroundRemovedPerson.shape[1]]
+
+        finalFrame[constants.ARTIFICIAL_SHADOW_OFFSET[0] : , constants.ARTIFICIAL_SHADOW_OFFSET[1] : ][personPixelsCropped] -= constants.ARTIFICIAL_SHADOW_COLOUR
+        # finalFrame = np.full(artificialShadowAdded.shape, fill_value=255, dtype=np.uint8)
+        finalFrame[:, :-constants.PERSON_MOVE][personMask] = backgroundRemovedPerson[:, constants.PERSON_MOVE:][personMask]
+        # finalFrame[:, :-constants.PERSON_MOVE][personMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
 
         finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
 
@@ -116,9 +124,33 @@ if __name__ == '__main__':
         cv2.imshow('Frame', finalFrame)
         cv2.waitKey(1)
 
+    for personFrame in personVideo:
+        # personFrame = np.flip(personFrame, 0)
+        # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
+        backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
+        # print(backgroundRemovedPerson.shape)
+        # backgroundRemovedPerson[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
+        personMask = np.any(backgroundRemovedPerson[:, constants.PERSON_MOVE:] != 255, axis=2)
+
+        finalFrame = backgroundImage.copy()[:personFrame.shape[0], :personFrame.shape[1]]
+        # finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
+        finalFrame[:, :-constants.PERSON_MOVE][personMask] = backgroundRemovedPerson[:, constants.PERSON_MOVE:][personMask]
+
+        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
+
+        video_io.write(finalFrame)
+
+        cv2.imshow('Frame', finalFrame)
+        cv2.waitKey(1)
+
+        personFrameNumber += 1
+
+        if personFrameNumber >= constants.SHADOW_ENTRY_FRAME:
+            break
+
     shadowFrameNumber = 0
 
-    for shadowFrame in shadow_video:
+    for shadowFrame in shadowVideo:
         if shadowFrameNumber == constants.SHADOW_BACKGROUND_FRAME:
             background = cv2.cvtColor(shadowFrame.copy().astype(np.uint8), cv2.COLOR_BGR2GRAY)
 
@@ -126,7 +158,7 @@ if __name__ == '__main__':
             break
         shadowFrameNumber += 1
 
-    for shadowFrame, personFrame in zip(shadow_video, person_video):
+    for shadowFrame, personFrame in zip(shadowVideo, personVideo):
         # Work with shadow in grayscale.
         shadowFrame = cv2.cvtColor(shadowFrame, cv2.COLOR_BGR2GRAY).astype(np.float32)
         backgroundRemoved = background_remove.removeBackgroundGray(shadowFrame, background)
@@ -164,8 +196,9 @@ if __name__ == '__main__':
         # backgroundRemovedPerson[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
         personMask = np.any(backgroundRemovedPerson[:, constants.PERSON_MOVE:] != 255, axis=2)
 
-        finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
-        finalFrame[70 : 70 + transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
+        finalFrame = backgroundImage.copy()[:personFrame.shape[0], :personFrame.shape[1]]
+        # finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
+        finalFrame[70 : 70 + transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
         finalFrame[:, :-constants.PERSON_MOVE][personMask] = backgroundRemovedPerson[:, constants.PERSON_MOVE:][personMask]
 
         finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
