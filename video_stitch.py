@@ -8,8 +8,6 @@ import utils
 import shadow
 import constants
 
-PERSON_MOVE = 115
-
 
 def visualizePoints(frame, points):
     for point in points:
@@ -103,11 +101,11 @@ if __name__ == '__main__':
         artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
         # artificialShadowAdded = utils.cropImage(artificialShadowAdded, 0, 150, constants.ARTIFICIAL_SHADOW_OFFSET[1], 0)
 
-        personMask = np.any(artificialShadowAdded[:, PERSON_MOVE:] != 255, axis=2)
+        personMask = np.any(artificialShadowAdded[:, constants.PERSON_MOVE:] != 255, axis=2)
         finalFrame = np.full(artificialShadowAdded.shape, fill_value=255, dtype=np.uint8)
-        finalFrame[:, :-PERSON_MOVE][personMask] = artificialShadowAdded[:, PERSON_MOVE:][personMask]
+        finalFrame[:, :-constants.PERSON_MOVE][personMask] = artificialShadowAdded[:, constants.PERSON_MOVE:][personMask]
 
-        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, PERSON_MOVE)
+        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
 
         if first:
             video_io.writeVideo(finalFrame, 'final1.mp4')
@@ -164,13 +162,13 @@ if __name__ == '__main__':
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
         # print(backgroundRemovedPerson.shape)
         # backgroundRemovedPerson[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
-        personMask = np.any(backgroundRemovedPerson[:, PERSON_MOVE:] != 255, axis=2)
+        personMask = np.any(backgroundRemovedPerson[:, constants.PERSON_MOVE:] != 255, axis=2)
 
         finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
         finalFrame[70 : 70 + transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
-        finalFrame[:, :-PERSON_MOVE][personMask] = backgroundRemovedPerson[:, PERSON_MOVE:][personMask]
+        finalFrame[:, :-constants.PERSON_MOVE][personMask] = backgroundRemovedPerson[:, constants.PERSON_MOVE:][personMask]
 
-        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, PERSON_MOVE)
+        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
 
         video_io.write(finalFrame)
 
