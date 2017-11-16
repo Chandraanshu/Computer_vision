@@ -36,6 +36,12 @@ def addPersonToBackground(background, person):
     return background
 
 
+def addShadowToBackground(background, shadow):
+    shadowMask = shadow < 250
+    background[constants.SHADOW_VERTICAL_POSITION : constants.SHADOW_VERTICAL_POSITION + shadow.shape[0], :shadow.shape[1]][shadowMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
+    return background
+
+
 if __name__ == '__main__':
     shadowVideo = video_io.readVideo(constants.SHADOW_VIDEO)
     personVideo = video_io.readVideo(constants.PERSON_VIDEO)
@@ -123,60 +129,54 @@ if __name__ == '__main__':
             break
 
 
+    # Run through extra frames at the beginning of the shadow video.
     shadowFrameNumber = 0
 
     for shadowFrame in shadowVideo:
         if shadowFrameNumber == constants.SHADOW_BACKGROUND_FRAME:
-            background = cv2.cvtColor(shadowFrame.copy().astype(np.uint8), cv2.COLOR_BGR2GRAY)
+            # Pull in backgroundFrame in grayscale.
+            backgroundShadow = cv2.cvtColor(shadowFrame.copy().astype(np.uint8), cv2.COLOR_BGR2GRAY)
 
         if shadowFrameNumber >= constants.SHADOW_START_FRAME:
+            # Need to start adding shadow to video.
             break
+
         shadowFrameNumber += 1
 
+
+    # Create video with "real" shadow.
     for shadowFrame, personFrame in zip(shadowVideo, personVideo):
         # Work with shadow in grayscale.
         shadowFrame = cv2.cvtColor(shadowFrame, cv2.COLOR_BGR2GRAY).astype(np.float32)
-        backgroundRemoved = background_remove.removeBackgroundGray(shadowFrame, background)
-        # backgroundRemoved = background_remove.removeBackground(shadowFrame, background)
+
+        backgroundRemovedShadow = background_remove.removeBackgroundGray(shadowFrame, backgroundShadow)
 
         # Threshold out whiter portions.
-        backgroundRemoved[backgroundRemoved > constants.SHADOW_THRESHOLD] = 255
-        transformedFrame = homography.transformImage(backgroundRemoved, originalPointsCoords, finalPointsCoords)
-
-        # transformedFrame = cv2.cvtColor(transformedFrame, cv2.COLOR_BGR2GRAY)
+        backgroundRemovedShadow[backgroundRemovedShadow > constants.SHADOW_THRESHOLD] = 255
+        transformedShadowFrame = homography.transformImage(backgroundRemovedShadow, originalPointsCoords, finalPointsCoords)
 
         # Crop out unneeded portions of image.
-        transformedFrame = utils.cropImage(transformedFrame, 200, 600, 0, 1400)
+        transformedShadowFrame = utils.cropImage(transformedShadowFrame, 200, 600, 0, 1400)
 
         # Expand shadow to become normal sized.
-        transformedFrame = utils.imageExpand(transformedFrame, constants.LAPLACIAN_BLUR_WINDOW_SIZE).astype(np.uint8)
+        transformedShadowFrame = utils.imageExpand(transformedShadowFrame, constants.LAPLACIAN_BLUR_WINDOW_SIZE).astype(np.uint8)
 
-        # Find shadow and crop out person
-        shadowPosition = shadow.findShadowPosition(transformedFrame, constants.SHADOW_SIZE)
-        transformedFrame = utils.cropImage(transformedFrame, 0, 0, 0, 200)
-        transformedFrame = utils.cropImage(transformedFrame, 2, 2, 2, 2)
-        transformedFrame[:, shadowPosition[1] + constants.SHADOW_SIZE[1] + 130 : ] = 255
+        # Find shadow and whiten out person
+        shadowPosition = shadow.findShadowPosition(transformedShadowFrame, constants.SHADOW_SIZE)
+        transformedShadowFrame = utils.cropImage(transformedShadowFrame, 2, 2, 2, 202)
+        transformedShadowFrame[:, shadowPosition[1] + constants.SHADOW_SIZE[1] + constants.SHADOW_PERSON_DISTANCE : ] = 255
 
-        # utils.drawTopLeftRectangleOnImage(transformedFrame, shadowPosition[::-1], constants.SHADOW_SIZE[1], constants.SHADOW_SIZE[0], (0, 0, 255))
-        transformedFrame = np.flip(transformedFrame, 1)
-
-        shadowMask = transformedFrame < 250
-
-        transformedFrame = cv2.cvtColor(transformedFrame, cv2.COLOR_GRAY2BGR)
-
-        # personFrame = np.flip(personFrame, 0)
-        # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
-        backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
-        # print(backgroundRemovedPerson.shape)
-        # backgroundRemovedPerson[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
-        personMask = np.any(backgroundRemovedPerson[:, constants.PERSON_MOVE:] != 255, axis=2)
+        # Horizontally flip shadow video.
+        transformedShadowFrame = np.flip(transformedShadowFrame, 1)
 
         finalFrame = backgroundImage.copy()[:personFrame.shape[0], :personFrame.shape[1]]
-        # finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
-        finalFrame[70 : 70 + transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
-        finalFrame[:, :-constants.PERSON_MOVE][personMask] = backgroundRemovedPerson[:, constants.PERSON_MOVE:][personMask]
 
-        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
+        # Add shadow to the background.
+        finalFrame = addShadowToBackground(finalFrame, transformedShadowFrame)
+
+        # Add person to background.
+        backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
+        finalFrame = addPersonToBackground(finalFrame, backgroundRemovedPerson)
 
         video_io.write(finalFrame)
 

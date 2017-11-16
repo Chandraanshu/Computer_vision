@@ -21,14 +21,14 @@ def removeBackgroundGray(frame, background):
     # Note: Negative values need to be set to 0 because converting to uint8
     # turns -2 into 254.
     # Get mask for all pixels which have a large positive difference.
-    badMask = np.abs(frame - background) < constants.GRAY_BACKGROUND_GOOD_THRESHOLD
+    badMask = np.abs(frame - background) < constants.SHADOW_BACKGROUND_GOOD_THRESHOLD
     # Replace good pixels with original in frame.
     frame[badMask] = 255
     return frame.astype(np.uint8)
 
 
 def removeBackground(frame, background):
-    badMask = np.all(np.abs(frame - background) < constants.BACKGROUND_GOOD_THRESHOLD, axis=2)
+    badMask = np.all(np.abs(frame - background) < constants.PERSON_BACKGROUND_GOOD_THRESHOLD, axis=2)
     # Replace good pixels with original in frame.
     frame[badMask] = 255
     return frame.astype(np.uint8)
