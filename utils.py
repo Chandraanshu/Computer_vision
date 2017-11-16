@@ -7,8 +7,10 @@ import constants
 
 def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
     """Computes the pixel-wise difference between 2 images.
+
     Difference is only computed for window whose top left corner is at (x, y)
     and has width and height as given.
+
     Args:
         img1: Numpy array containing first image.
         x1: x coordinate of top left corner of window in image1.
@@ -18,6 +20,7 @@ def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
         y2: y coordinate of top left corner of window in image2.
         width: Width of window.
         height: Height of window.
+
     Returns:
         A numpy array with shape (width, height) containing the pixel-wise
         difference between the given images.

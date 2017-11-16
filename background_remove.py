@@ -5,19 +5,18 @@ import constants
 
 
 def removeBackgroundGray(frame, background):
-    """Removes static background from a frame.
+    """Removes static background from a frame in grayscale.
+
+    Sets the background points to 255 (white).
 
     Args:
-        frame: Numpy array with shape (numFrames, frameWidth, frameHeight, 3)
-            representing the frame.
+        frame: Numpy array representing the frame.
+        background: The background frame to be removed from this frame.
 
     Returns:
-        Video with the static background removed. The return values is a numpy
+        Frame with the static background removed. The return values is a numpy
         array with same shape as the input frame.
     """
-    # Numpy broadcasting takes care of subtracting average from each frame.
-    # frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
     # Note: Negative values need to be set to 0 because converting to uint8
     # turns -2 into 254.
     # Get mask for all pixels which have a large positive difference.
@@ -28,6 +27,18 @@ def removeBackgroundGray(frame, background):
 
 
 def removeBackground(frame, background):
+    """Removes static background from a frame in colour.
+
+    Sets the background points to 255 (white).
+
+    Args:
+        frame: Numpy array representing the frame.
+        background: The background frame to be removed from this frame.
+
+    Returns:
+        Frame with the static background removed. The return values is a numpy
+        array with same shape as the input frame.
+    """
     badMask = np.all(np.abs(frame - background) < constants.PERSON_BACKGROUND_GOOD_THRESHOLD, axis=2)
     # Replace good pixels with original in frame.
     frame[badMask] = 255
@@ -35,6 +46,16 @@ def removeBackground(frame, background):
 
 
 def getVideoAverage(video):
+    """Find the average frame of a video.
+
+    Can be used to get the background of a video.
+
+    Args:
+        video: A numpy array containing the video.
+
+    Returns:
+        A numpy array representing the average frame.
+    """
     average = np.zeros(video.shape[1 : ])
 
     for frameIdx, frame in enumerate(video):
