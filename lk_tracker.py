@@ -20,14 +20,15 @@ def generateShrinkPyramid(image, depth):
         List of images, represented as numpy arrays.
     """
     shrunkImages = [image]
-    window = constants.BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
+    # window = constants.GAUSS_BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
     for i in range(depth - 1):
-        shrunkImages.append(utils.imageShrink(shrunkImages[-1], window))
+        # shrunkImages.append(utils.imageShrink(shrunkImages[-1], window))
+        shrunkImages.append(cv2.resize(shrunkImages[-1], dsize=tuple(np.array(shrunkImages[-1].shape) // 2)))
         # Gauss window size needs to reduce as the image gets smaller,
         # else the blurring is excessive.
-        window = window // 2
-        if window % 2 == 0:
-            window += 1
+        # window = window // 2
+        # if window % 2 == 0:
+        #     window += 1
 
     return shrunkImages
 
@@ -68,7 +69,7 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
                                 topLeftY1,
                                 windowSize,
                                 windowSize)
-    gx2 = utils.pixelDiffImages(imageOld,
+    gx = utils.pixelDiffImages(imageOld,
                                 topLeftX1,
                                 topLeftY1,
                                 imageOld,
@@ -76,7 +77,7 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
                                 topLeftY1 - 1,
                                 windowSize,
                                 windowSize)
-    gx = (gx1 + gx2) / 2
+    # gx = (gx1 + gx2) / 2
     #gx = (np.greater(abs(gx1),abs(gx2)) ? gx1 : gx2
     #mesky1 =
     #gx = gx1 if (np.greater(abs(gx1),abs(gx2))) else gx2
@@ -89,7 +90,7 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
                                 topLeftY1,
                                 windowSize,
                                 windowSize)
-    gy2 = utils.pixelDiffImages(imageOld,
+    gy = utils.pixelDiffImages(imageOld,
                                 topLeftX1,
                                 topLeftY1,
                                 imageOld,
@@ -97,7 +98,7 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
                                 topLeftY1,
                                 windowSize,
                                 windowSize)
-    gy = (gy1 + gy2) / 2
+    # gy = (gy1 + gy2) / 2
     #gy = (np.greater(abs(gy1),abs(gy2))) ? gy1 : gy2
     #gy = gy1 if (np.greater(abs(gy1),abs(gy2))) else gy2
 
@@ -191,10 +192,10 @@ if __name__ == '__main__':
                                    constants.TRACK_WINDOW_SIZE,
                                    constants.TRACK_WINDOW_SIZE,
                                    (0, 0, 255))
-        cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('Frame', 600, 400)
+        # cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow('Frame', 600, 400)
         cv2.imshow('Frame', newFrame)
-        cv2.waitKey(250)
+        cv2.waitKey(500)
         oldFrame = cv2.cvtColor(video[frameIdx], cv2.COLOR_BGR2GRAY)
         oldFrame = cv2.flip(oldFrame, 1)
         newFrame = cv2.cvtColor(video[frameIdx + 1], cv2.COLOR_BGR2GRAY)
@@ -214,4 +215,4 @@ if __name__ == '__main__':
                                    constants.TRACK_WINDOW_SIZE,
                                    constants.TRACK_WINDOW_SIZE,
                                    (0, 0, 255))
-    video_io.displayVideo(video, FPS=5)
+    video_io.displayVideo(video, FPS=30)
