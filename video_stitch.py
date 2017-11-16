@@ -23,46 +23,29 @@ def visualizePoints(frame, points):
     cv2.waitKey(10000)
 
 
+def addArtificialShadowToBackground(background, person):
+    personMask = np.any(person[:, constants.PERSON_MOVE - constants.ARTIFICIAL_SHADOW_OFFSET:] != 255, axis=2)
+    background[:, : -constants.PERSON_MOVE + constants.ARTIFICIAL_SHADOW_OFFSET][personMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
+    return background
+
+
+def addPersonToBackground(background, person):
+    personMask = np.any(person[:, constants.PERSON_MOVE:] != 255, axis=2)
+    background[:, : -constants.PERSON_MOVE][personMask] = person[:, constants.PERSON_MOVE :][personMask]
+    background = utils.cropImage(background, 0, 150, 0, constants.PERSON_MOVE)
+    return background
+
+
 if __name__ == '__main__':
-    # video = video_io.readVideo(constants.PERSON_VIDEO).astype(np.float32)
-    #
-    # # diff = video - video[5]
-    # # background = cv2.cvtColor(video[5].copy(), cv2.COLOR_BGR2GRAY)
-
-    #
-    # for i, frame in enumerate(video):
-    #     backgroundRemoved = background_remove.removeBackground(frame, background)
-    #     artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemoved, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
-    #     cv2.imshow('Frame', artificialShadowAdded)
-    #
-    #     # Press 'q' to close video.
-    #     if cv2.waitKey(20) & 0xFF == ord('q'):
-    #         break
-
     shadowVideo = video_io.readVideo(constants.SHADOW_VIDEO)
     personVideo = video_io.readVideo(constants.PERSON_VIDEO)
     backgroundImage = cv2.imread('wall.jpg')
-    # background = shadowVideo[constants.SHADOW_BACKGROUND_FRAME].copy()
 
-    # mask = np.logical_or(video[:, :, :, 1] >= 80, video[:, :, :, 0] >= 80)
-    # mask = np.logical_or(video[:, :, :, 2] < 120, mask)
-    #
-    # video[mask] = 255
 
-    # for i, frame in enumerate(video.astype(np.uint8)):
-    #     # backgroundRemoved = background_remove.removeBackground(frame, background)
-    #     # backgroundRemoved[np.any(backgroundRemoved > 120, axis=2)] = 255
-    #     cv2.imshow('Frame', frame)
-    #
-    #     # Press 'q' to close video.
-    #     if cv2.waitKey(20) & 0xFF == ord('q'):
-    #         break
+    # Create homography
+    shadowFrame = next(shadowVideo)
 
-    # video_io.displayVideo(video)
-
-    frame = next(shadowVideo)
-
-    frameHeight, frameWidth = frame.shape[0], frame.shape[1]
+    frameHeight, frameWidth = shadowFrame.shape[0], shadowFrame.shape[1]
 
     originalPoints = np.array([
         [210, 850],
@@ -82,47 +65,43 @@ if __name__ == '__main__':
 
     homographyMatrix = homography.computeHomography(originalPoints, finalPoints)
     finalPointsCoords, originalPointsCoords = homography.computeMapping(frameHeight, frameWidth, homographyMatrix)
-    # print ('homo done')
+
+
+    # Create video of person with artificial shadow.
     personFrameNumber = 0
-    first = True
+    firstFrame = True
 
     for personFrame in personVideo:
+        # Pull in background frame.
         if personFrameNumber == constants.PERSON_BACKGROUND_FRAME:
             backgroundPerson = personFrame.copy()
 
         personFrameNumber += 1
 
         if personFrameNumber < constants.PERSON_START_FRAME:
+            # Skip frames before start.
             continue
         elif personFrameNumber >= constants.ARTIFICAL_SHADOW_BREAK_FRAME:
+            # Stop adding artificial shadow at this time
             break
 
-        # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
-        # artificialShadowAdded = artificial_shadow.addArtificalShadow(backgroundRemovedPerson, constants.ARTIFICIAL_SHADOW_OFFSET, constants.ARTIFICIAL_SHADOW_COLOUR)
-        # artificialShadowAdded = utils.cropImage(artificialShadowAdded, 0, 150, constants.ARTIFICIAL_SHADOW_OFFSET[1], 0)
 
-        personPixels = np.any(backgroundRemovedPerson != 255, axis=2)
-        personPixelsCropped = personPixels[: backgroundRemovedPerson.shape[0] - constants.ARTIFICIAL_SHADOW_OFFSET[0], : backgroundRemovedPerson.shape[1] - constants.ARTIFICIAL_SHADOW_OFFSET[1]]
-
-        personMask = np.any(backgroundRemovedPerson[:, constants.PERSON_MOVE:] != 255, axis=2)
         finalFrame = backgroundImage.copy()[:backgroundRemovedPerson.shape[0], :backgroundRemovedPerson.shape[1]]
 
-        finalFrame[constants.ARTIFICIAL_SHADOW_OFFSET[0] : , constants.ARTIFICIAL_SHADOW_OFFSET[1] : ][personPixelsCropped] -= constants.ARTIFICIAL_SHADOW_COLOUR
-        # finalFrame = np.full(artificialShadowAdded.shape, fill_value=255, dtype=np.uint8)
-        finalFrame[:, :-constants.PERSON_MOVE][personMask] = backgroundRemovedPerson[:, constants.PERSON_MOVE:][personMask]
-        # finalFrame[:, :-constants.PERSON_MOVE][personMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
+        finalFrame = addArtificialShadowToBackground(finalFrame, backgroundRemovedPerson)
+        finalFrame = addPersonToBackground(finalFrame, backgroundRemovedPerson)
 
-        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
-
-        if first:
+        if firstFrame:
+            # Needs size of video to create the video writer.
             video_io.writeVideo(finalFrame, 'final1.mp4')
-            first = False
+            firstFrame = False
 
         video_io.write(finalFrame)
 
         cv2.imshow('Frame', finalFrame)
         cv2.waitKey(1)
+
 
     for personFrame in personVideo:
         # personFrame = np.flip(personFrame, 0)
