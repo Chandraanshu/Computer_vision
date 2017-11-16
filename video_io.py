@@ -127,6 +127,11 @@ def write(frame):
     # time.sleep(0.01)  # Needs some time to write the frame
 
 
+def displayFrame(frame, waitTime=1):
+    cv2.imshow('Frame', frame)
+    cv2.waitKey(waitTime)
+
+
 if __name__ == '__main__':
     video = readVideo('traffic.mp4')
     displayVideo(video)

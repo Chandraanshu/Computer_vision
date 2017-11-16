@@ -45,7 +45,7 @@ def addShadowToBackground(background, shadow):
 if __name__ == '__main__':
     shadowVideo = video_io.readVideo(constants.SHADOW_VIDEO)
     personVideo = video_io.readVideo(constants.PERSON_VIDEO)
-    backgroundImage = cv2.imread('wall.jpg')
+    backgroundImage = cv2.imread(constants.BACKGROUND_IMAGE)
 
 
     # Create homography
@@ -104,9 +104,7 @@ if __name__ == '__main__':
             firstFrame = False
 
         video_io.write(finalFrame)
-
-        cv2.imshow('Frame', finalFrame)
-        cv2.waitKey(1)
+        video_io.displayFrame(finalFrame)
 
 
     # Create video of person with no shadow.
@@ -118,9 +116,7 @@ if __name__ == '__main__':
         finalFrame = addPersonToBackground(finalFrame, backgroundRemovedPerson)
 
         video_io.write(finalFrame)
-
-        cv2.imshow('Frame', finalFrame)
-        cv2.waitKey(1)
+        video_io.displayFrame(finalFrame)
 
         personFrameNumber += 1
 
@@ -179,8 +175,6 @@ if __name__ == '__main__':
         finalFrame = addPersonToBackground(finalFrame, backgroundRemovedPerson)
 
         video_io.write(finalFrame)
-
-        cv2.imshow('Frame', finalFrame)
-        cv2.waitKey(1)
+        video_io.displayFrame(finalFrame)
 
     video_io.shutdown()
