@@ -66,8 +66,6 @@ if __name__ == '__main__':
         [250, 485],
     ])
 
-    # Uncomment when figuring out points for homography.
-    # visualizePoints(frame, originalPoints)
 
     homographyMatrix = homography.computeHomography(originalPoints, finalPoints)
     finalPointsCoords, originalPointsCoords = homography.computeMapping(frameHeight, frameWidth, homographyMatrix)

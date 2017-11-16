@@ -6,10 +6,7 @@ import constants
 
 
 def pixelDiffImages(img1, x1, y1, img2, x2, y2, width, height):
-    """Computes the pixel-wise difference between Lab* images.
-    Requires images to be using the Lab* colour encoding scheme.
-    Images should be passed in as numpy arrays.
-    The difference algorithm used is Delta E (CIE 1976).
+    """Computes the pixel-wise difference between 2 images.
     Difference is only computed for window whose top left corner is at (x, y)
     and has width and height as given.
     Args:
