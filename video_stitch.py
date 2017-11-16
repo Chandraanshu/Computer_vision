@@ -82,7 +82,7 @@ if __name__ == '__main__':
             # Skip frames before start.
             continue
         elif personFrameNumber >= constants.ARTIFICAL_SHADOW_BREAK_FRAME:
-            # Stop adding artificial shadow at this time
+            # Stop adding artificial shadow at this time.
             break
 
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
@@ -103,19 +103,13 @@ if __name__ == '__main__':
         cv2.waitKey(1)
 
 
+    # Create video of person with no shadow.
     for personFrame in personVideo:
-        # personFrame = np.flip(personFrame, 0)
-        # personFrame = cv2.cvtColor(personFrame, cv2.COLOR_BGR2GRAY)
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
-        # print(backgroundRemovedPerson.shape)
-        # backgroundRemovedPerson[:transformedFrame.shape[0], :transformedFrame.shape[1]][shadowMask] = transformedFrame[shadowMask]
-        personMask = np.any(backgroundRemovedPerson[:, constants.PERSON_MOVE:] != 255, axis=2)
 
-        finalFrame = backgroundImage.copy()[:personFrame.shape[0], :personFrame.shape[1]]
-        # finalFrame = np.full(personFrame.shape, fill_value=255, dtype=np.uint8)
-        finalFrame[:, :-constants.PERSON_MOVE][personMask] = backgroundRemovedPerson[:, constants.PERSON_MOVE:][personMask]
+        finalFrame = backgroundImage.copy()[:backgroundRemovedPerson.shape[0], :backgroundRemovedPerson.shape[1]]
 
-        finalFrame = utils.cropImage(finalFrame, 0, 150, 0, constants.PERSON_MOVE)
+        finalFrame = addPersonToBackground(finalFrame, backgroundRemovedPerson)
 
         video_io.write(finalFrame)
 
@@ -125,7 +119,9 @@ if __name__ == '__main__':
         personFrameNumber += 1
 
         if personFrameNumber >= constants.SHADOW_ENTRY_FRAME:
+            # Need to start adding the "real" shadow.
             break
+
 
     shadowFrameNumber = 0
 
