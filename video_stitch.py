@@ -9,27 +9,39 @@ import shadow
 import constants
 
 
-def visualizePoints(frame, points):
-    for point in points:
-        utils.drawRectangleOnImage(frame,
-                                   list(point)[::-1],
-                                   6,
-                                   6,
-                                   (0, 0, 255))
-
-    cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Frame', 800, 800)
-    cv2.imshow('Frame', frame.astype(np.uint8))
-    cv2.waitKey(10000)
-
-
 def addArtificialShadowToBackground(background, person):
+    """Adds an artificial shadow for a person to the background.
+
+    Relies on the person being the only non white points in the frame.
+    Adds the shadow by shifting the person and reducing the pixel values of the
+    background.
+    Note: Modifies the background frame.
+
+    Args:
+        background: A numpy array containing the background frame.
+        person: A numpy array containing the person frame.
+
+    Returns:
+        A frame containing the background with the shadow of the person.
+    """
     personMask = np.any(person[:, constants.PERSON_MOVE - constants.ARTIFICIAL_SHADOW_OFFSET:] != 255, axis=2)
-    background[:, : -constants.PERSON_MOVE + constants.ARTIFICIAL_SHADOW_OFFSET][personMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
+    background[:, : -constants.PERSON_MOVE + constants.ARTIFICIAL_SHADOW_OFFSET][personMask] -= constants.ARTIFICIAL_SHADOW_COLOUR_DEPRESS
     return background
 
 
 def addPersonToBackground(background, person):
+    """Adds a person to the background.
+
+    Relies on the person being the only non white points in the frame.
+    Note: Modifies the background frame.
+
+    Args:
+        background: A numpy array containing the background frame.
+        person: A numpy array containing the person frame.
+
+    Returns:
+        A frame containing the background with the person.
+    """
     personMask = np.any(person[:, constants.PERSON_MOVE:] != 255, axis=2)
     background[:, : -constants.PERSON_MOVE][personMask] = person[:, constants.PERSON_MOVE :][personMask]
     background = utils.cropImage(background, 0, 150, 0, constants.PERSON_MOVE)
@@ -37,8 +49,19 @@ def addPersonToBackground(background, person):
 
 
 def addShadowToBackground(background, shadow):
+    """Adds a shadow to the background.
+
+    Relies on the shadow being the only non white (< 250) pixels in the image.
+
+    Args:
+        background: A numpy array containing the background frame.
+        shadow: A numpy array containing the shadow frame.
+
+    Returns:
+        A frame containing the background with the person.
+    """
     shadowMask = shadow < 250
-    background[constants.SHADOW_VERTICAL_POSITION : constants.SHADOW_VERTICAL_POSITION + shadow.shape[0], :shadow.shape[1]][shadowMask] -= constants.ARTIFICIAL_SHADOW_COLOUR
+    background[constants.SHADOW_VERTICAL_POSITION : constants.SHADOW_VERTICAL_POSITION + shadow.shape[0], :shadow.shape[1]][shadowMask] -= constants.ARTIFICIAL_SHADOW_COLOUR_DEPRESS
     return background
 
 
