@@ -100,10 +100,10 @@ if __name__ == '__main__':
 
         if firstFrame:
             # Needs size of video to create the video writer.
-            video_io.writeVideo(finalFrame, 'final1.mp4')
+            videoWriter = video_io.createVideoWriter(finalFrame, constants.OUTPUT_VIDEO)
             firstFrame = False
 
-        video_io.write(finalFrame)
+        video_io.writeFrame(videoWriter, finalFrame)
         video_io.displayFrame(finalFrame)
 
 
@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
         finalFrame = addPersonToBackground(finalFrame, backgroundRemovedPerson)
 
-        video_io.write(finalFrame)
+        video_io.writeFrame(videoWriter, finalFrame)
         video_io.displayFrame(finalFrame)
 
         personFrameNumber += 1
@@ -174,7 +174,7 @@ if __name__ == '__main__':
         backgroundRemovedPerson = background_remove.removeBackground(personFrame, backgroundPerson)
         finalFrame = addPersonToBackground(finalFrame, backgroundRemovedPerson)
 
-        video_io.write(finalFrame)
+        video_io.writeFrame(videoWriter, finalFrame)
         video_io.displayFrame(finalFrame)
 
     video_io.shutdown()
