@@ -24,7 +24,7 @@ def openVideo(fileName):
     return cap
 
 
-def getAllFrames(cap, numFrames):
+def getAllFrames(cap):
     """Reads all frames from a cv2.VideoCapture object.
 
     Args:
@@ -34,24 +34,15 @@ def getAllFrames(cap, numFrames):
         Numpy array with shape (numFrames, frameHeight, frameWidth, 3)
         containing all frames in the video.
     """
-    video = []
-    num = 0
-
     while cap.isOpened():
         ret, frame = cap.read()
 
         if not ret:
             break
 
-        num += 1
-        if num == numFrames:
-            break
-
         yield frame.astype(np.float32)
 
-    # return np.array(video)
-
-CAP = {}
+    cap.release()
 
 
 def readVideo(fileName, numFrames=0):
@@ -64,13 +55,11 @@ def readVideo(fileName, numFrames=0):
         Numpy array with shape (numFrames, frameHeight, frameWidth, 3)
         containing all frames in the video.
     """
-    CAP[fileName] = openVideo(fileName)
-    return getAllFrames(CAP[fileName], numFrames)
+    cap = openVideo(fileName)
+    return getAllFrames(cap)
+
 
 def shutdown():
-    for cap in CAP.values():
-        cap.release()
-    # return video
     WRITER.release()
 
 
@@ -94,9 +83,7 @@ def displayVideo(frames, FPS=30):
     cv2.destroyAllWindows()
 
 
-WRITER = None
-
-def writeVideo(frame, fileName, FPS=30):
+def createVideoWriter(frame, fileName, FPS=30):
     """Given a video, write it to a file.
 
     Deletes the specified file, if already present.
@@ -112,8 +99,7 @@ def writeVideo(frame, fileName, FPS=30):
     except FileNotFoundError:
         pass
 
-    global WRITER
-    WRITER = cv2.VideoWriter(
+    return cv2.VideoWriter(
         fileName,
         apiPreference=cv2.CAP_ANY,
         fourcc=cv2.VideoWriter_fourcc(*'MJPG'),
@@ -122,9 +108,8 @@ def writeVideo(frame, fileName, FPS=30):
     )
 
 
-def write(frame):
-    WRITER.write(frame)
-    # time.sleep(0.01)  # Needs some time to write the frame
+def writeFrame(writer, frame):
+    writer.write(frame)
 
 
 def displayFrame(frame, waitTime=1):
