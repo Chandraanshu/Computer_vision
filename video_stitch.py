@@ -43,8 +43,8 @@ def addShadowToBackground(background, shadow):
 
 
 if __name__ == '__main__':
-    shadowVideo = video_io.readVideo(constants.SHADOW_VIDEO)
-    personVideo = video_io.readVideo(constants.PERSON_VIDEO)
+    shadowVideo = video_io.readVideoAsGenerator(constants.SHADOW_VIDEO)
+    personVideo = video_io.readVideoAsGenerator(constants.PERSON_VIDEO)
     backgroundImage = cv2.imread(constants.BACKGROUND_IMAGE)
 
 

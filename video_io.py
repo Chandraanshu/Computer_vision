@@ -24,16 +24,33 @@ def openVideo(fileName):
     return cap
 
 
-def getAllFrames(cap):
+def getAllFrames(cap, numFrames):
     """Reads all frames from a cv2.VideoCapture object.
-
     Args:
         cap: A cv2.VideoCapture object.
-
     Returns:
         Numpy array with shape (numFrames, frameHeight, frameWidth, 3)
         containing all frames in the video.
     """
+    video = []
+    num = 0
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+
+        if not ret:
+            break
+
+        video.append(frame)
+        num += 1
+        if num == numFrames:
+            break
+
+    return np.array(video)
+
+
+def getAllFramesAsGenerator(cap):
+    
     while cap.isOpened():
         ret, frame = cap.read()
 
@@ -47,20 +64,24 @@ def getAllFrames(cap):
 
 def readVideo(fileName, numFrames=0):
     """Reads video from file and returns all frames contained in it.
-
     Args:
         fileName: The name of the video file.
-
     Returns:
         Numpy array with shape (numFrames, frameHeight, frameWidth, 3)
         containing all frames in the video.
     """
     cap = openVideo(fileName)
-    return getAllFrames(cap)
+    video = getAllFrames(cap, numFrames)
+    cap.release()
+
+    return video
 
 
-def shutdown():
-    WRITER.release()
+def readVideoAsGenerator(fileName):
+    
+    cap = openVideo(fileName)
+    return getAllFramesAsGenerator(cap)
+
 
 
 def displayVideo(frames, FPS=30):
