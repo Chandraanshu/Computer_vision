@@ -8,7 +8,7 @@ import utils
 
 
 if __name__ == '__main__':
-    video = video_io.readVideo('Pbox.mp4')
+    video = video_io.readVideo('HelloPanda.MOV')
     frame = video[0]
     nframe = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # nframe = misc.imread('orchid_gray.jpg', 'F')

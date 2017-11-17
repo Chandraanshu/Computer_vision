@@ -197,5 +197,3 @@ if __name__ == '__main__':
 
         video_io.writeFrame(videoWriter, finalFrame)
         video_io.displayFrame(finalFrame)
-
-    video_io.shutdown()

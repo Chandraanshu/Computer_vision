@@ -5,6 +5,7 @@ import math
 import video_io
 import utils
 import constants
+import time
 
 
 def generateShrinkPyramid(image, depth):
@@ -20,15 +21,15 @@ def generateShrinkPyramid(image, depth):
         List of images, represented as numpy arrays.
     """
     shrunkImages = [image]
-    # window = constants.GAUSS_BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
+    window = constants.GAUSS_BLUR_WINDOW_SIZE  # TODO: Finetune Gaussian kernel size.
     for i in range(depth - 1):
-        # shrunkImages.append(utils.imageShrink(shrunkImages[-1], window))
-        shrunkImages.append(cv2.resize(shrunkImages[-1], dsize=tuple(np.array(shrunkImages[-1].shape) // 2)))
+        shrunkImages.append(utils.imageShrink(shrunkImages[-1], window))
+        
         # Gauss window size needs to reduce as the image gets smaller,
         # else the blurring is excessive.
-        # window = window // 2
-        # if window % 2 == 0:
-        #     window += 1
+        window = window // 2
+        if window % 2 == 0:
+            window += 1
 
     return shrunkImages
 
@@ -57,51 +58,29 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
     # imageNew = cv2.cvtColor(imageNew, cv2.COLOR_BGR2GRAY)
 
     # Get top left corner of window.
+
     topLeftX1, topLeftY1 = pixelCoordsOld - windowSize // 2
     topLeftX2, topLeftY2 = pixelCoordsNew - windowSize // 2
 
     # Compute horizontal and vertical gradients for the original frame.
-    gx1 = utils.pixelDiffImages(imageOld,
-                                topLeftX1,
-                                topLeftY1 + 1,
-                                imageOld,
-                                topLeftX1,
-                                topLeftY1,
-                                windowSize,
-                                windowSize)
     gx = utils.pixelDiffImages(imageOld,
-                                topLeftX1,
-                                topLeftY1,
-                                imageOld,
-                                topLeftX1,
-                                topLeftY1 - 1,
-                                windowSize,
-                                windowSize)
-    # gx = (gx1 + gx2) / 2
-    #gx = (np.greater(abs(gx1),abs(gx2)) ? gx1 : gx2
-    #mesky1 =
-    #gx = gx1 if (np.greater(abs(gx1),abs(gx2))) else gx2
-
-    gy1 = utils.pixelDiffImages(imageOld,
-                                topLeftX1 + 1,
-                                topLeftY1,
-                                imageOld,
-                                topLeftX1,
-                                topLeftY1,
-                                windowSize,
-                                windowSize)
+                               topLeftX1,
+                               topLeftY1 + 1,
+                               imageOld,
+                               topLeftX1,
+                               topLeftY1,
+                               windowSize,
+                               windowSize)
+    
     gy = utils.pixelDiffImages(imageOld,
-                                topLeftX1,
-                                topLeftY1,
-                                imageOld,
-                                topLeftX1 - 1,
-                                topLeftY1,
-                                windowSize,
-                                windowSize)
-    # gy = (gy1 + gy2) / 2
-    #gy = (np.greater(abs(gy1),abs(gy2))) ? gy1 : gy2
-    #gy = gy1 if (np.greater(abs(gy1),abs(gy2))) else gy2
-
+                               topLeftX1 + 1,
+                               topLeftY1,
+                               imageOld,
+                               topLeftX1,
+                               topLeftY1,
+                               windowSize,
+                               windowSize)
+    
     # Compute difference between original and new frames.
     diff = utils.pixelDiffImages(imageOld,
                                  topLeftX1,
@@ -121,14 +100,12 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
     gkern = np.outer(signal.gaussian(windowSize, 2.5),
                      signal.gaussian(windowSize, 2.5))
 
-    gkern /= np.sum(gkern)
     # Construct matrices and solve the matrix-vector equation to get the
     # movement of the pixel.
     Z = np.array([[np.sum(Ixx * gkern), np.sum(Ixy * gkern)],
                   [np.sum(Ixy * gkern), np.sum(Iyy * gkern)]])
     b = np.array([np.sum(diff * gx * gkern), np.sum(diff * gy * gkern)])
     d = np.linalg.solve(Z, b)
-    print(d)
 
     # Compute new position of pixel
     return pixelCoordsNew + d[: : -1]
@@ -171,43 +148,21 @@ def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
 
 
 if __name__ == '__main__':
-    video = video_io.readVideo('Remote.mp4')
-    video = np.transpose(video, (0, 2, 1, 3))
-    # video_io.displayVideo(video)
-
-    # for frame in video:
-    #     cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
-    #     cv2.resizeWindow('Frame', 600, 400)
-    #     cv2.imshow('Frame', frame)
-    #     cv2.waitKey(33)
+    video = video_io.readVideo(constants.LK_TRACKER_DEMO_VIDEO, constants.NUM_FRAMES_TO_TRACK)
+    video = np.transpose(video, [0, 2, 1, 3]).copy()
 
     # Convert from image coordinates to matrix coordinates.
     pixelToTrack = constants.PIXEL_TO_TRACK[: : -1]
     pixelPositions = [pixelToTrack]
     for frameIdx in range(min(constants.NUM_FRAMES_TO_TRACK, len(video) - 1)):
-        newFrame = cv2.cvtColor(cv2.cvtColor(video[frameIdx].copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
-        newFrame = cv2.flip(newFrame, 1)
-        utils.drawRectangleOnImage(newFrame,
-                                   pixelPositions[-1][: : -1],
-                                   constants.TRACK_WINDOW_SIZE,
-                                   constants.TRACK_WINDOW_SIZE,
-                                   (0, 0, 255))
-        # cv2.namedWindow('Frame', cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow('Frame', 600, 400)
-        cv2.imshow('Frame', newFrame)
-        cv2.waitKey(500)
         oldFrame = cv2.cvtColor(video[frameIdx], cv2.COLOR_BGR2GRAY)
-        oldFrame = cv2.flip(oldFrame, 1)
         newFrame = cv2.cvtColor(video[frameIdx + 1], cv2.COLOR_BGR2GRAY)
-        newFrame = cv2.flip(newFrame, 1)
         pixelToTrack = LKTrackerFrameToFrame(oldFrame,
                                              newFrame,
                                              pixelToTrack,
                                              constants.TRACK_WINDOW_SIZE,
                                              constants.PYRAMID_DEPTH)
         pixelPositions.append(pixelToTrack)
-        if frameIdx % 10 == 0:
-            print(frameIdx)
 
     for i, pixelPosition in enumerate(pixelPositions):
         utils.drawRectangleOnImage(video[i],
@@ -215,4 +170,11 @@ if __name__ == '__main__':
                                    constants.TRACK_WINDOW_SIZE,
                                    constants.TRACK_WINDOW_SIZE,
                                    (0, 0, 255))
-    video_io.displayVideo(video, FPS=30)
+    
+    video_io.displayVideo(video, FPS=5)
+
+    videoWriter = video_io.createVideoWriter(video[0], constants.LK_TRACKER_VIDEO)
+    for frame in video:
+        video_io.writeFrame(videoWriter, frame)
+        time.sleep(0.01)
+
