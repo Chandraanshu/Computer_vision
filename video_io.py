@@ -144,7 +144,7 @@ def createVideoWriter(frame, fileName, FPS=30):
     return cv2.VideoWriter(
         fileName,
         apiPreference=cv2.CAP_ANY,
-        fourcc=cv2.VideoWriter_fourcc(*'MJPG'),
+        fourcc=cv2.VideoWriter_fourcc(*'MP4V'),
         fps=FPS,
         frameSize=tuple(reversed(frame.shape[0 : 2]))
     )

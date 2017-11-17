@@ -65,18 +65,18 @@ def LKTrackerImageToImage(imageOld, pixelCoordsOld, imageNew,
     # Compute horizontal and vertical gradients for the original frame.
     gx = utils.pixelDiffImages(imageOld,
                                topLeftX1,
-                               topLeftY1 + 1,
+                               topLeftY1,
                                imageOld,
                                topLeftX1,
-                               topLeftY1,
+                               topLeftY1 - 1,
                                windowSize,
                                windowSize)
     
     gy = utils.pixelDiffImages(imageOld,
-                               topLeftX1 + 1,
+                               topLeftX1,
                                topLeftY1,
                                imageOld,
-                               topLeftX1,
+                               topLeftX1 - 1,
                                topLeftY1,
                                windowSize,
                                windowSize)
@@ -149,7 +149,6 @@ def LKTrackerFrameToFrame(frameOld, frameNew, pixelCoords,
 
 if __name__ == '__main__':
     video = video_io.readVideo(constants.LK_TRACKER_DEMO_VIDEO, constants.NUM_FRAMES_TO_TRACK)
-    video = np.transpose(video, [0, 2, 1, 3]).copy()
 
     # Convert from image coordinates to matrix coordinates.
     pixelToTrack = constants.PIXEL_TO_TRACK[: : -1]
